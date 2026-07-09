@@ -14,37 +14,33 @@ const featuredSlug = items.find(p => p.data.featured)?.slug ?? items[0]?.slug;
     <!-- No visible page title — nav already provides context. Still a real
          heading for SEO/screen readers. -->
     <h1 class="sr-only">Series</h1>
-    <div class="series-grid">
+    <div class="series-list">
       {items.map((p, i) => {
-        const variant = p.slug === featuredSlug ? 'feature' : p.data.tone;
-        const index = String(i + 1).padStart(2, '0');
+        const isFeatured = p.slug === featuredSlug;
+        const size = isFeatured ? 'lg' : (p.data.tone === 'loose' ? 'sm' : 'md');
+        const side = i % 2 === 0 ? 'left' : 'right';
         const meta = p.data.year ?? p.data.date;
         return (
           <a
             href={`/series/${p.slug}`}
-            class={`series-card series-card--${variant} reveal`}
-            style={`--card-accent: ${p.data.accent}; --reveal-delay: ${i * 80}ms`}
+            class={`series-item series-item--${size} series-item--${side} reveal`}
+            style={`--card-accent: ${p.data.accent}; --reveal-delay: ${i * 90}ms`}
           >
-            <div class="series-card__thumb">
+            <div class="series-item__media">
               {p.data.cover && (
                 <img src={p.data.cover} alt={p.data.title} loading={i < 2 ? 'eager' : 'lazy'} />
               )}
-              {variant === 'loose' && (
-                <div class="series-card__scrim">
-                  {p.data.tag && <span class="series-card__index">{index} — {p.data.tag}</span>}
-                  <span class="series-card__title series-card__title--loose">{p.data.title}</span>
-                </div>
-              )}
             </div>
-            {variant !== 'loose' && (
-              <div class="series-card__info">
-                {p.data.tag && <span class="series-card__index">{index} — {p.data.tag}</span>}
-                <div class="series-card__titlerow">
-                  <span class="series-card__title" style="color: var(--card-accent)">{p.data.title}</span>
-                  {meta && <span class="series-card__year">{meta}</span>}
-                </div>
-              </div>
-            )}
+            <div class="series-item__caption">
+              {p.data.tag && <span class="series-item__tag">{p.data.tag}</span>}
+              <span
+                class={`series-item__title ${p.data.tone === 'loose' ? 'series-item__title--loose' : ''}`}
+                style="color: var(--card-accent)"
+              >
+                {p.data.title}
+              </span>
+              {meta && <span class="series-item__year">{meta}</span>}
+            </div>
           </a>
         );
       })}

@@ -91,6 +91,14 @@ const covers = all
   var nextBtn   = document.getElementById('next-btn');
   var closeBtn  = document.getElementById('thumb-close-btn');
 
+  // ── Shared easing ─────────────────────────────────────────────
+  // Read once from the CSS tokens so JS-driven and CSS-driven motion
+  // can never drift apart (see --ease / --ease-reveal in global.css).
+  var ROOT_STYLE  = getComputedStyle(document.documentElement);
+  var EASE        = ROOT_STYLE.getPropertyValue('--ease').trim()        || 'cubic-bezier(0.16,1,0.3,1)';
+  var EASE_REVEAL = ROOT_STYLE.getPropertyValue('--ease-reveal').trim() || 'cubic-bezier(0.87,0,0.13,1)';
+  var PANEL_DUR_MS = parseInt(ROOT_STYLE.getPropertyValue('--dur-panel'), 10) || 320;
+
   // ── Timing ────────────────────────────────────────────────────
   var HEADER    = 72;   // matches --header-height CSS token
   var BOTTOM_H  = 200;  // matches --bottom-h CSS variable; reserved for bottom bar
@@ -159,7 +167,7 @@ const covers = all
     if (currentEl) {
       var old = currentEl;
       currentEl = null;
-      old.style.transition = 'opacity ' + FADE_OUT + 'ms ease';
+      old.style.transition = 'opacity ' + FADE_OUT + 'ms ' + EASE;
       old.style.opacity    = '0';
       setTimeout(function() { old.remove(); }, FADE_OUT);
     }
@@ -195,11 +203,11 @@ const covers = all
         requestAnimationFrame(function() {
           if (isFirstShot) {
             // Scale + fade: elegant, restrained
-            el.style.transition = 'opacity 900ms cubic-bezier(0.25,0,0,1), transform 900ms cubic-bezier(0.25,0,0,1)';
+            el.style.transition = 'opacity 900ms ' + EASE + ', transform 900ms ' + EASE;
             el.style.opacity    = '1';
             el.style.transform  = 'scale(1)';
           } else {
-            el.style.transition = 'opacity ' + FADE_IN + 'ms ease';
+            el.style.transition = 'opacity ' + FADE_IN + 'ms ' + EASE;
             el.style.opacity    = '1';
           }
         });
@@ -269,11 +277,25 @@ const covers = all
   if (closeBtn) closeBtn.addEventListener('click', closeThumbs);
 
   // ── Thumbnails ────────────────────────────────────────────────
+  // Converts a rect (viewport coords) into a clip-path inset() relative to
+  // panelRect — used to anchor the thumbnail panel's reveal to wherever the
+  // current photo actually sits, instead of a flat cross-fade.
+  function clipInsetFromRect(rect, panelRect) {
+    var top    = Math.max(0, rect.top    - panelRect.top);
+    var left   = Math.max(0, rect.left   - panelRect.left);
+    var right  = Math.max(0, panelRect.right  - rect.right);
+    var bottom = Math.max(0, panelRect.bottom - rect.bottom);
+    return 'inset(' + top + 'px ' + right + 'px ' + bottom + 'px ' + left + 'px)';
+  }
+
   function buildThumbs() {
     grid.innerHTML = '';
     covers.forEach(function(c, idx) {
       var btn = document.createElement('button');
       btn.className = 'thumb-item';
+      // Hidden pre-state for the assemble-in stagger — see openThumbs().
+      btn.style.opacity   = '0';
+      btn.style.transform = 'translateY(8px)';
       var img = document.createElement('img');
       img.src      = c.src;
       img.alt      = c.title;
@@ -288,15 +310,43 @@ const covers = all
   }
 
   var ARROW_DUR  = '300ms';
-  var ARROW_EASE = 'cubic-bezier(0.4,0,0.6,1)';  // symmetric ease for clean snap
-  var ARROW_IN_EASE = 'cubic-bezier(0.2,0,0,1)'; // fast-settle for return
+  var ARROW_EASE = EASE;         // arrows sliding away — same fast-decelerate as the rest of the site
+  var ARROW_IN_EASE = EASE_REVEAL; // arrows returning/settling — same "materialize" curve as scroll-reveal
 
   function openThumbs() {
     thumbOpen = true;
     pauseTimer();
     buildThumbs();
-    panel.classList.add('is-open');
     thumbBtn.classList.add('is-active');
+
+    // Anchor the reveal to the current photo's actual on-screen position —
+    // the panel expands outward from the photo instead of cross-fading in,
+    // so the transition reads as "one image becoming a grid."
+    var panelRect = panel.getBoundingClientRect();
+    if (currentEl) {
+      panel.style.transition = 'none';
+      panel.style.clipPath   = clipInsetFromRect(currentEl.getBoundingClientRect(), panelRect);
+      panel.classList.add('is-open');
+      panel.offsetHeight; // force reflow so the collapsed clip-path paints first
+      requestAnimationFrame(function() {
+        panel.style.transition = 'clip-path ' + PANEL_DUR_MS + 'ms ' + EASE_REVEAL;
+        panel.style.clipPath   = 'inset(0)';
+      });
+    } else {
+      panel.style.transition = 'none';
+      panel.style.clipPath   = 'inset(0)';
+      panel.classList.add('is-open');
+    }
+
+    // Thumbnails assemble in, starting as the expansion finishes
+    var items = grid.querySelectorAll('.thumb-item');
+    items.forEach(function(item, i) {
+      setTimeout(function() {
+        item.style.transition = 'opacity ' + PANEL_DUR_MS + 'ms ' + EASE + ', transform ' + PANEL_DUR_MS + 'ms ' + EASE;
+        item.style.opacity    = '1';
+        item.style.transform  = 'translateY(0)';
+      }, PANEL_DUR_MS * 0.6 + i * 30);
+    });
 
     // Slide + fade out arrows away from center
     var t = 'opacity ' + ARROW_DUR + ' ' + ARROW_EASE + ', transform ' + ARROW_DUR + ' ' + ARROW_EASE;
@@ -315,8 +365,16 @@ const covers = all
 
   function closeThumbs() {
     thumbOpen = false;
-    panel.classList.remove('is-open');
     thumbBtn.classList.remove('is-active');
+
+    // Contract back down to wherever the current photo will reappear —
+    // the mirror image of the expand-out on open.
+    var panelRect = panel.getBoundingClientRect();
+    panel.style.transition = 'clip-path ' + PANEL_DUR_MS + 'ms ' + EASE_REVEAL;
+    panel.style.clipPath   = currentEl
+      ? clipInsetFromRect(currentEl.getBoundingClientRect(), panelRect)
+      : 'inset(50% 50% 50% 50%)';
+    setTimeout(function() { panel.classList.remove('is-open'); }, PANEL_DUR_MS);
 
     // Slide + fade in arrows back to center
     var t = 'opacity 360ms ' + ARROW_IN_EASE + ', transform 400ms ' + ARROW_IN_EASE;
@@ -405,7 +463,7 @@ const covers = all
 
     // Step 1: fade current photo
     if (currentEl) {
-      currentEl.style.transition = 'opacity ' + PHOTO_FADE + 'ms ease';
+      currentEl.style.transition = 'opacity ' + PHOTO_FADE + 'ms ' + EASE;
       currentEl.style.opacity    = '0';
     }
 
@@ -425,7 +483,7 @@ const covers = all
     setTimeout(function() {
       infoEls.forEach(function(el, i) {
         var d = i * TEXT_GAP;
-        el.style.transition = 'opacity ' + TEXT_DUR + 'ms ease ' + d + 'ms, transform ' + TEXT_DUR + 'ms ease ' + d + 'ms';
+        el.style.transition = 'opacity ' + TEXT_DUR + 'ms ' + EASE + ' ' + d + 'ms, transform ' + TEXT_DUR + 'ms ' + EASE + ' ' + d + 'ms';
         requestAnimationFrame(function() {
           requestAnimationFrame(function() {
             el.style.opacity   = '0';
@@ -448,7 +506,7 @@ const covers = all
         curtain.style.pointerEvents = 'none';
         requestAnimationFrame(function() {
           requestAnimationFrame(function() {
-            curtain.style.transition    = 'opacity ' + CURTAIN_DUR + 'ms ease';
+            curtain.style.transition    = 'opacity ' + CURTAIN_DUR + 'ms ' + EASE;
             curtain.style.opacity       = '1';
             curtain.style.pointerEvents = 'all';
           });
@@ -479,7 +537,7 @@ const covers = all
     ctrls.forEach(function(el, i) {
       if (!el) return;
       setTimeout(function() {
-        el.style.transition = 'opacity 360ms cubic-bezier(0.25,0,0,1), transform 360ms cubic-bezier(0.25,0,0,1)';
+        el.style.transition = 'opacity 360ms ' + EASE + ', transform 360ms ' + EASE;
         el.style.opacity    = '1';
         el.style.transform  = 'translateY(0)';
       }, cd + i * 75);
@@ -503,7 +561,7 @@ const covers = all
     });
     infoEls.forEach(function(el, i) {
       setTimeout(function() {
-        el.style.transition = 'opacity 400ms cubic-bezier(0.25,0,0,1), transform 400ms cubic-bezier(0.25,0,0,1), color 200ms ease';
+        el.style.transition = 'opacity 400ms ' + EASE + ', transform 400ms ' + EASE + ', color 200ms ' + EASE;
         el.style.opacity    = '1';
         el.style.transform  = 'translateY(0)';
       }, d + 280 + i * 65);
@@ -550,7 +608,7 @@ const covers = all
       curtainEl.style.pointerEvents = 'all';
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
-          curtainEl.style.transition    = 'opacity ' + CURTAIN_DUR + 'ms ease';
+          curtainEl.style.transition    = 'opacity ' + CURTAIN_DUR + 'ms ' + EASE;
           curtainEl.style.opacity       = '0';
           curtainEl.style.pointerEvents = 'none';
         });
@@ -566,14 +624,14 @@ const covers = all
 
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
-          overlay.style.transition = 'opacity 650ms cubic-bezier(0.25,0,0,1)';
+          overlay.style.transition = 'opacity 650ms ' + EASE;
           overlay.style.opacity    = '1';
         });
       });
 
       // Hold, then fade out
       setTimeout(function() {
-        overlay.style.transition = 'opacity 500ms ease';
+        overlay.style.transition = 'opacity 500ms ' + EASE;
         overlay.style.opacity    = '0';
         setTimeout(function() {
           overlay.style.display = 'none';
@@ -735,7 +793,7 @@ const covers = all
     align-items: center;
     gap: 7px;
     /* opacity + transform set by JS load animation and hide/show logic */
-    transition: opacity 280ms ease, transform 280ms ease;
+    transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   }
 
   /* Visible dot */
@@ -744,7 +802,7 @@ const covers = all
     border-radius: 50%;
     background: var(--shutter-dot);
     flex-shrink: 0;
-    transition: background 200ms ease, transform 120ms cubic-bezier(0.25,0,0,1);
+    transition: background var(--dur-fast) var(--ease), transform var(--dur-micro) var(--ease);
   }
   .ctrl__dot--sq { border-radius: 0; }
 
@@ -756,7 +814,7 @@ const covers = all
     text-transform: uppercase;
     color: var(--shutter-label);
     line-height: 1;
-    transition: color 200ms ease;
+    transition: color var(--dur-fast) var(--ease);
   }
 
   /* Hover — dot brightens, label becomes visible */
@@ -775,7 +833,11 @@ const covers = all
   .ctrl.is-active .ctrl__dot  { background: var(--shutter-dot-active); }
   .ctrl.is-active .ctrl__label { color: var(--shutter-label-hover); }
 
-  /* ── Thumbnail panel ─────────────────────────────────────── */
+  /* ── Thumbnail panel ─────────────────────────────────────────
+     Revealed via clip-path (set/animated from JS in openThumbs()/
+     closeThumbs()) anchored to the current photo's on-screen rect,
+     rather than a flat opacity cross-fade — see home.astro's script.
+     ────────────────────────────────────────────────────────── */
   #thumb-panel {
     position: absolute;
     top: var(--header-height, 72px);
@@ -784,11 +846,10 @@ const covers = all
     background: var(--color-bg);
     z-index: 20;
     overflow-y: auto;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 300ms ease, visibility 300ms;
+    clip-path: inset(50% 50% 50% 50%);
+    pointer-events: none;
   }
-  #thumb-panel.is-open { opacity: 1; visibility: visible; }
+  #thumb-panel.is-open { pointer-events: auto; }
 
   #thumb-grid {
     display: grid;
@@ -808,7 +869,7 @@ const covers = all
     width: 100%;
     aspect-ratio: 1 / 1;
     object-fit: cover;
-    transition: opacity 180ms ease;
+    transition: opacity var(--dur-fast) var(--ease);
   }
   :global(.thumb-item:hover img) { opacity: 0.55; }
 
@@ -830,7 +891,7 @@ const covers = all
     color: var(--shutter-text);
     text-decoration: none;
     line-height: 1.2;
-    transition: color 200ms ease;
+    transition: color var(--dur-fast) var(--ease);
   }
   .home-info__link:hover { color: var(--shutter-text-hover); }
 

@@ -67,15 +67,23 @@
   /* Layout */
   --sidebar-width: 190px;
   --header-height: 72px;
+  /* Shared centered-column width — Series and Sketchbook both use this
+     so the two pages read as one consistent rail rather than drifting. */
+  --editorial-width: 860px;
 
   /* Unified page gutter — same value used for every edge on every page.
      Overridden at each breakpoint to keep proportions consistent. */
   --gutter: 4rem;
 
-  /* Animation */
+  /* Animation
+     Six deliberate tiers, applied consistently everywhere — no
+     transition on the site should use a hardcoded duration/easing
+     outside of this set. */
   --ease:           cubic-bezier(0.16, 1, 0.3, 1);
   --ease-reveal:    cubic-bezier(0.87, 0, 0.13, 1); /* slow-fast-slow: content materialises */
-  --dur-fast:       240ms;
+  --dur-micro:      120ms;   /* instant tactile feedback: press/active states */
+  --dur-fast:       240ms;   /* hover feedback, small UI transitions */
+  --dur-panel:      320ms;   /* overlay open/close: lightbox, mobile nav, thumbnail panel */
   --dur-base:       520ms;
   --dur-slow:       820ms;
   --dur-reveal:     700ms;   /* longer for the materialise effect */
@@ -119,7 +127,7 @@ body {
   font-family: var(--font-primary);
   font-size: var(--text-base);
   line-height: 1.6;
-  transition: background-color 350ms ease, color 350ms ease;
+  transition: background-color var(--dur-panel) var(--ease), color var(--dur-panel) var(--ease);
 }
 
 /* Focus states — kept consistent with the monochrome palette instead of
@@ -195,7 +203,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 200ms ease;
+  transition: opacity var(--dur-fast) var(--ease);
 }
 .theme-toggle:hover { opacity: 1; }
 
@@ -389,36 +397,43 @@ button {
 
 
 /* ============================================
-   SERIES GRID
-   Tiered, asymmetric — signals curation through scale and
-   typography instead of uniform repeated cards or labels.
-   6-column grid: a "feature" tile (first entry, largest),
-   "standard" tiles (resolved work, tighter square rhythm),
-   and "loose" tiles (exploratory groupings — offset baseline,
-   quieter type, wider aspect ratio).
+   SERIES RAIL
+   Centered single column, entries alternating left/right with
+   varying size — a curated archive rhythm rather than a uniform
+   grid. No numbered labels; hierarchy comes from scale, alignment,
+   and (for the "loose" tone) quieter typography.
    ============================================ */
-.series-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  align-items: start;
-  gap: var(--space-4);
-  padding-top: var(--space-2);
+.series-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  max-width: var(--editorial-width);
+  margin-inline: auto;
+  padding-top: var(--space-3);
 }
 
-.series-card {
+.series-item {
   display: block;
   text-decoration: none;
   color: inherit;
+  width: 66%;
 }
+.series-item--lg { width: 80%; }
+.series-item--sm { width: 52%; }
 
-.series-card__thumb {
-  position: relative;
+.series-item--left  { align-self: flex-start; text-align: left; }
+.series-item--right { align-self: flex-end;   text-align: right; }
+
+.series-item__media {
   overflow: hidden;
   background-color: var(--color-surface);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  aspect-ratio: 1 / 1;
 }
+.series-item--lg .series-item__media { aspect-ratio: 4 / 5; }
+.series-item--sm .series-item__media { aspect-ratio: 4 / 3; }
 
-.series-card__thumb img {
+.series-item__media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -426,26 +441,18 @@ button {
   transition: filter var(--dur-base) var(--ease);
 }
 
-.series-card:hover .series-card__thumb img {
+.series-item:hover .series-item__media img {
   filter: brightness(0.88) saturate(0.6);
 }
 
-.series-card__info {
+.series-item__caption {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
+.series-item--right .series-item__caption { align-items: flex-end; }
 
-.series-card__titlerow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-/* Index line — "01 — Landscape": a numbered-sequence device,
-   not a category system. Quiet, small, always muted. */
-.series-card__index {
+.series-item__tag {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   letter-spacing: 0.08em;
@@ -453,7 +460,7 @@ button {
   color: var(--color-muted);
 }
 
-.series-card__title {
+.series-item__title {
   font-family: var(--font-ui);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -461,62 +468,50 @@ button {
   text-transform: uppercase;
   color: var(--color-text);
 }
+.series-item--lg .series-item__title { font-size: var(--text-base); }
 
-.series-card__year {
+/* Loose — quieter, unresolved register: lowercase serif instead of
+   the bold tracked label the structured/feature entries use. */
+.series-item__title--loose {
+  font-family: var(--font-primary);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: var(--text-base);
+}
+
+.series-item__year {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   color: var(--color-muted);
-  white-space: nowrap;
 }
 
-/* Feature — first entry, dominant scale */
-.series-card--feature { grid-column: span 4; }
-.series-card--feature .series-card__thumb { aspect-ratio: 4 / 5; }
-.series-card--feature .series-card__title { font-size: var(--text-base); }
-
-/* Structured — resolved work, tighter square rhythm */
-.series-card--structured { grid-column: span 2; }
-.series-card--structured .series-card__thumb { aspect-ratio: 1 / 1; }
-
-/* Loose — exploratory groupings: wider frame, offset baseline, and a
-   distinct composition — title overlaid on the image over a bottom
-   scrim instead of the image-then-caption pattern the other tiers use. */
-.series-card--loose {
-  grid-column: span 2;
-  margin-top: var(--space-6);
+/* Intro animation — extends the shared .reveal/.is-visible system
+   (RevealObserver.astro) with a small rise, reusing the same
+   materialize timing/easing used everywhere else on the site. */
+.series-item.reveal {
+  transform: translateY(14px);
+  transition:
+    opacity var(--dur-reveal) var(--ease-reveal),
+    transform var(--dur-reveal) var(--ease-reveal);
 }
-.series-card--loose .series-card__thumb { aspect-ratio: 4 / 3; }
-
-.series-card__scrim {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: var(--space-3);
-  padding-top: var(--space-5);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.series-card__scrim .series-card__index { color: rgba(255, 255, 255, 0.55); }
-
-.series-card__title--loose {
-  font-family: var(--font-primary);
-  font-size: var(--text-base);
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: rgba(255, 255, 255, 0.92);
+.series-item.reveal.is-visible {
+  transform: translateY(0);
 }
 
-@media (max-width: 900px) {
-  .series-grid { grid-template-columns: repeat(2, 1fr); }
-  .series-card--feature,
-  .series-card--structured,
-  .series-card--loose {
-    grid-column: span 2;
-    margin-top: 0;
+@media (max-width: 700px) {
+  .series-item,
+  .series-item--lg,
+  .series-item--sm {
+    width: 100%;
   }
+  .series-item--left,
+  .series-item--right {
+    align-self: center;
+    text-align: left;
+  }
+  .series-item--right .series-item__caption { align-items: flex-start; }
 }
 
 
@@ -816,7 +811,8 @@ button {
    Layout: square thumbnail left + text right, dividers between entries.
    ============================================ */
 
-/* Sparse concept lede */
+/* Sparse concept lede — shares the Series rail's width so the two
+   pages read as one consistent centered column. */
 .sketchbook-lede {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
@@ -824,7 +820,8 @@ button {
   text-transform: uppercase;
   color: var(--color-muted);
   margin-bottom: var(--space-5);
-  max-width: 44ch;
+  max-width: var(--editorial-width);
+  margin-inline: auto;
 }
 
 /* Entry list — divider on first child too via :before */
@@ -832,6 +829,8 @@ button {
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--color-border);
+  max-width: var(--editorial-width);
+  margin-inline: auto;
 }
 
 .sketchbook-entry {
@@ -840,7 +839,7 @@ button {
   color: inherit;
   border-bottom: 1px solid var(--color-border);
   padding: var(--space-4) 0;
-  transition: opacity var(--dur-fast) ease;
+  transition: opacity var(--dur-fast) var(--ease);
 }
 
 .sketchbook-entry:hover { opacity: 0.6; }
@@ -1034,21 +1033,6 @@ button {
   animation: word-rise var(--dur-slow) var(--ease) both;
 }
 
-/* Statement — fades in quietly after the name has settled */
-.intro-statement {
-  position: relative;
-  z-index: 1;
-  font-family: var(--font-primary);
-  font-size: var(--text-base);
-  font-style: italic;
-  color: rgba(255, 255, 255, 0.62);
-  text-align: center;
-  max-width: 44ch;
-  line-height: 1.65;
-  padding-inline: var(--space-4);
-  animation: quiet-in var(--dur-base) var(--ease) both;
-}
-
 /* Enter cue — appears last, sits at the bottom */
 .intro-enter {
   position: absolute;
@@ -1222,7 +1206,7 @@ button {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 300ms ease;
+  transition: opacity var(--dur-panel) var(--ease);
 }
 .s-lb.is-open { opacity: 1; pointer-events: all; }
 
@@ -1256,7 +1240,7 @@ button {
   background: none;
   border: none;
   padding: 0.5rem;
-  transition: color 180ms ease;
+  transition: color var(--dur-fast) var(--ease);
 }
 .s-lb__close:hover { color: rgba(255, 255, 255, 0.95); }
 
@@ -1270,7 +1254,7 @@ button {
   cursor: pointer;
   background: none; border: none;
   padding: 2rem 2.5rem;
-  transition: color 180ms ease;
+  transition: color var(--dur-fast) var(--ease);
 }
 .s-lb__prev:hover,
 .s-lb__next:hover { color: rgba(255, 255, 255, 0.95); }
@@ -1313,7 +1297,7 @@ button {
   color: rgba(255, 255, 255, 0.65);
   text-decoration: none;
   pointer-events: all;
-  transition: color 180ms ease;
+  transition: color var(--dur-fast) var(--ease);
 }
 .s-lb__info-link:hover { color: rgba(255, 255, 255, 0.95); }
 
@@ -1332,8 +1316,20 @@ button {
     opacity: 1;
     transition: none;
   }
+  .series-item.reveal {
+    transform: none;
+  }
   .page-curtain {
     display: none !important;
+  }
+  /* The clip-path expand/contract is set inline from JS at runtime
+     (openThumbs/closeThumbs in home.astro) — !important is required
+     here to win over that inline transition. */
+  #thumb-panel {
+    transition: none !important;
+  }
+  .thumb-item {
+    transition: none !important;
   }
 }
 
@@ -1381,7 +1377,7 @@ button {
   width: 100%;
   height: 2px;
   background: #ffffff;       /* inverts via mix-blend-mode: difference */
-  transition: transform 180ms cubic-bezier(0.25,0,0,1), opacity 130ms ease;
+  transition: transform var(--dur-micro) var(--ease), opacity var(--dur-micro) var(--ease);
   transform-origin: center;
 }
 
@@ -1408,7 +1404,7 @@ button {
   padding: var(--header-height) 2rem 3rem;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 220ms ease;
+  transition: opacity var(--dur-panel) var(--ease);
 }
 
 .nav-mobile[aria-hidden="false"] {
@@ -1431,7 +1427,7 @@ button {
   color: #ffffff;
   text-decoration: none;
   line-height: 1;
-  transition: opacity 150ms ease;
+  transition: opacity var(--dur-fast) var(--ease);
 }
 .nav-mobile__links a:hover { opacity: 0.45; }
 
@@ -1465,18 +1461,6 @@ body.nav-is-open { overflow: hidden; }
   .header-nav    { display: none; }
   .nav-toggle    { display: flex; }
   .theme-toggle  { display: none; }
-
-  /* Series grid: single column */
-  .series-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-  }
-  .series-card--feature,
-  .series-card--structured,
-  .series-card--loose {
-    grid-column: 1;
-    margin-top: 0;
-  }
 
   /* Project detail: stack vertically */
   .project-page {
