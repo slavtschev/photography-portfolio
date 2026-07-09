@@ -1,7 +1,8 @@
 ---
 title: "Colors of Creation"
-section: "projects"
 order: 1
+featured: true
+tag: "Landscape"
 date: "2024"
 accent: "var(--color-text)"
 cover: "https://picsum.photos/seed/col-cover/800/800"

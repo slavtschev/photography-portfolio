@@ -1,7 +1,7 @@
 ---
 title: "Street"
-section: "playground"
-order: 1
+order: 2
+tag: "Street"
 date: "2024"
 accent: "var(--color-text)"
 cover: "https://picsum.photos/seed/st-cover/800/800"

@@ -3,13 +3,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
 export async function getStaticPaths() {
-  const all = await getCollection('projects');
-  const sorted = all.sort((a, b) => {
-    if (a.data.section !== b.data.section) {
-      return a.data.section === 'projects' ? -1 : 1;
-    }
-    return a.data.order - b.data.order;
-  });
+  const all = await getCollection('series');
+  const sorted = all.sort((a, b) => a.data.order - b.data.order);
 
   return sorted.map((project) => ({
     params: { slug: project.slug },
@@ -25,7 +20,6 @@ const { data } = project;
   title={data.title}
   description={data.description ?? `${data.title} — Dimitar Slavchev`}
   accent={data.accent}
-  activeSection={data.section}
 >
   <div class="page-content project-page">
 

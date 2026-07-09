@@ -1,7 +1,7 @@
 ---
 title: "Stay Awake"
-section: "projects"
-order: 2
+order: 3
+tag: "Nocturne"
 date: "2023"
 accent: "var(--color-text)"
 cover: "https://picsum.photos/seed/sa-cover/800/800"

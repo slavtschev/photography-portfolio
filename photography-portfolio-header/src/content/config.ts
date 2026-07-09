@@ -1,12 +1,16 @@
 import { defineCollection, z } from 'astro:content';
 
-const projects = defineCollection({
+const series = defineCollection({
   type: 'content',
   schema: z.object({
     title: z.string(),
-    /** 'projects' = main work, 'playground' = experimental/casual */
-    section: z.enum(['projects', 'playground']).default('projects'),
     order: z.number().default(99),
+    /** 'structured' = resolved work, 'loose' = looser/exploratory grouping — drives the Series grid's visual treatment */
+    tone: z.enum(['structured', 'loose']).default('structured'),
+    /** Marks the grid's single hero tile. Falls back to the first entry by order if none is set. */
+    featured: z.boolean().default(false),
+    /** One quiet word for the grid's index line, e.g. "Landscape" — not a category system, just a curatorial marker */
+    tag: z.string().optional(),
     /** Short paragraph shown on the project page header */
     description: z.string().optional(),
     /** Year string, e.g. "2024" or "2023–2024" */
@@ -34,4 +38,4 @@ const notes = defineCollection({
   }),
 });
 
-export const collections = { projects, notes };
+export const collections = { series, notes };

@@ -1,7 +1,8 @@
 ---
 title: "Fragments"
-section: "playground"
-order: 2
+order: 5
+tone: "loose"
+tag: "Ephemera"
 date: "2023"
 accent: "var(--color-text)"
 cover: "https://picsum.photos/seed/fr-cover/800/800"

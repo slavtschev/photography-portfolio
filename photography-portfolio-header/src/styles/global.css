@@ -173,17 +173,23 @@ button {
   z-index: 200;
 }
 
-/* Theme toggle — centered absolutely between name and nav.
+/* Nav + theme toggle grouped into one right-hand cluster (see .header-right
+   below), instead of the toggle floating alone between name and nav. */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Theme toggle — docked at the end of the nav cluster.
    Inherits mix-blend-mode:difference from the header stacking context:
    icon is #fff, auto-inverts to black on light backgrounds. */
 .theme-toggle {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   color: var(--color-text);
   background: none;
   border: none;
   padding: 8px 14px;
+  margin-right: -14px;
   cursor: pointer;
   opacity: 0.42;
   display: flex;
@@ -280,18 +286,6 @@ button {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-.copyright {
-  position: fixed;
-  bottom: var(--space-3);
-  right: var(--space-3);
-  font-family: var(--font-ui);
-  font-size: var(--text-xs);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  pointer-events: none;
 }
 
 
@@ -395,34 +389,36 @@ button {
 
 
 /* ============================================
-   PROJECT CARD GRID
-   Index pages: cover image + title below.
+   SERIES GRID
+   Tiered, asymmetric — signals curation through scale and
+   typography instead of uniform repeated cards or labels.
+   6-column grid: a "feature" tile (first entry, largest),
+   "standard" tiles (resolved work, tighter square rhythm),
+   and "loose" tiles (exploratory groupings — offset baseline,
+   quieter type, wider aspect ratio).
    ============================================ */
-.card-grid {
+.series-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(6, 1fr);
+  align-items: start;
   gap: var(--space-4);
   padding-top: var(--space-2);
 }
 
-@media (max-width: 900px) {
-  .card-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-.project-card {
+.series-card {
   display: block;
   text-decoration: none;
   color: inherit;
 }
 
-.project-card__thumb {
-  aspect-ratio: 1 / 1;
+.series-card__thumb {
+  position: relative;
   overflow: hidden;
   background-color: var(--color-surface);
   margin-bottom: var(--space-2);
 }
 
-.project-card__thumb img {
+.series-card__thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -430,18 +426,34 @@ button {
   transition: filter var(--dur-base) var(--ease);
 }
 
-.project-card:hover .project-card__thumb img {
+.series-card:hover .series-card__thumb img {
   filter: brightness(0.88) saturate(0.6);
 }
 
-.project-card__info {
+.series-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.series-card__titlerow {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
 }
 
-.project-card__title {
+/* Index line — "01 — Landscape": a numbered-sequence device,
+   not a category system. Quiet, small, always muted. */
+.series-card__index {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.series-card__title {
   font-family: var(--font-ui);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -450,12 +462,61 @@ button {
   color: var(--color-text);
 }
 
-.project-card__year {
+.series-card__year {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   color: var(--color-muted);
   white-space: nowrap;
+}
+
+/* Feature — first entry, dominant scale */
+.series-card--feature { grid-column: span 4; }
+.series-card--feature .series-card__thumb { aspect-ratio: 4 / 5; }
+.series-card--feature .series-card__title { font-size: var(--text-base); }
+
+/* Structured — resolved work, tighter square rhythm */
+.series-card--structured { grid-column: span 2; }
+.series-card--structured .series-card__thumb { aspect-ratio: 1 / 1; }
+
+/* Loose — exploratory groupings: wider frame, offset baseline, and a
+   distinct composition — title overlaid on the image over a bottom
+   scrim instead of the image-then-caption pattern the other tiers use. */
+.series-card--loose {
+  grid-column: span 2;
+  margin-top: var(--space-6);
+}
+.series-card--loose .series-card__thumb { aspect-ratio: 4 / 3; }
+
+.series-card__scrim {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: var(--space-3);
+  padding-top: var(--space-5);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.series-card__scrim .series-card__index { color: rgba(255, 255, 255, 0.55); }
+
+.series-card__title--loose {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+@media (max-width: 900px) {
+  .series-grid { grid-template-columns: repeat(2, 1fr); }
+  .series-card--feature,
+  .series-card--structured,
+  .series-card--loose {
+    grid-column: span 2;
+    margin-top: 0;
+  }
 }
 
 
@@ -1405,10 +1466,16 @@ body.nav-is-open { overflow: hidden; }
   .nav-toggle    { display: flex; }
   .theme-toggle  { display: none; }
 
-  /* Card grids: single column */
-  .card-grid {
+  /* Series grid: single column */
+  .series-grid {
     grid-template-columns: 1fr;
     gap: var(--space-3);
+  }
+  .series-card--feature,
+  .series-card--structured,
+  .series-card--loose {
+    grid-column: 1;
+    margin-top: 0;
   }
 
   /* Project detail: stack vertically */

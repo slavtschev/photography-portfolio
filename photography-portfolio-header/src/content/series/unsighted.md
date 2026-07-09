@@ -1,7 +1,7 @@
 ---
 title: "Unsighted"
-section: "projects"
-order: 3
+order: 4
+tag: "Periphery"
 date: "2023"
 accent: "var(--color-text)"
 cover: "https://picsum.photos/seed/un-cover/800/800"

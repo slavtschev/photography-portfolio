@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const items = (await getCollection('series')).sort((a, b) => a.data.order - b.data.order);
+const featuredSlug = items.find(p => p.data.featured)?.slug ?? items[0]?.slug;
+---
+
+<BaseLayout
+  title="Series"
+  description="Photography series by Dimitar Slavchev."
+>
+  <div class="page-content">
+    <!-- No visible page title — nav already provides context. Still a real
+         heading for SEO/screen readers. -->
+    <h1 class="sr-only">Series</h1>
+    <div class="series-grid">
+      {items.map((p, i) => {
+        const variant = p.slug === featuredSlug ? 'feature' : p.data.tone;
+        const index = String(i + 1).padStart(2, '0');
+        const meta = p.data.year ?? p.data.date;
+        return (
+          <a
+            href={`/series/${p.slug}`}
+            class={`series-card series-card--${variant} reveal`}
+            style={`--card-accent: ${p.data.accent}; --reveal-delay: ${i * 80}ms`}
+          >
+            <div class="series-card__thumb">
+              {p.data.cover && (
+                <img src={p.data.cover} alt={p.data.title} loading={i < 2 ? 'eager' : 'lazy'} />
+              )}
+              {variant === 'loose' && (
+                <div class="series-card__scrim">
+                  {p.data.tag && <span class="series-card__index">{index} — {p.data.tag}</span>}
+                  <span class="series-card__title series-card__title--loose">{p.data.title}</span>
+                </div>
+              )}
+            </div>
+            {variant !== 'loose' && (
+              <div class="series-card__info">
+                {p.data.tag && <span class="series-card__index">{index} — {p.data.tag}</span>}
+                <div class="series-card__titlerow">
+                  <span class="series-card__title" style="color: var(--card-accent)">{p.data.title}</span>
+                  {meta && <span class="series-card__year">{meta}</span>}
+                </div>
+              </div>
+            )}
+          </a>
+        );
+      })}
+    </div>
+  </div>
+</BaseLayout>

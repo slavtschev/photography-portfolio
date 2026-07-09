@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
-const all = await getCollection('projects');
+const all = await getCollection('series');
 const covers = all
   .filter(p => p.data.cover)
   .map(p => ({ src: p.data.cover, title: p.data.title, slug: p.slug }));
@@ -348,7 +348,7 @@ const covers = all
     lbImg.src = covers[lbIdx].src;
     lbImg.alt = covers[lbIdx].title;
     if (lbInfoLink && covers[lbIdx].slug && covers[lbIdx].title) {
-      lbInfoLink.href = '/projects/' + covers[lbIdx].slug;
+      lbInfoLink.href = '/series/' + covers[lbIdx].slug;
       lbInfoLink.textContent = covers[lbIdx].title;
     }
     lb.classList.add('is-open');
@@ -602,7 +602,6 @@ const covers = all
 <style>
   :global(body:has(.shutter-page)) { background: var(--color-bg) !important; }
   :global(body:has(.shutter-page) .site-main) { animation: none !important; }
-  :global(body:has(.shutter-page) .copyright) { display: none !important; }
 
   /* Header slides in from slightly above on every home page load */
   :global(body:has(.shutter-page) .site-header) {
