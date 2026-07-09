@@ -13,6 +13,12 @@ const covers = all
   <!-- ── Shutter page ────────────────────────────────────────── -->
   <div class="shutter-page" data-nav-dark>
 
+    <!-- Slideshow is the visual hero, so the page title stays visually
+         hidden — this gives the page a real heading for SEO/screen
+         readers without adding a visible title that would compete
+         with the photography. -->
+    <h1 class="sr-only">Dimitar Slavchev — Street &amp; documentary photographer based in Sofia</h1>
+
     <!-- Intro overlay: shows name on very first session visit -->
     <div id="intro-overlay" class="intro-overlay" aria-hidden="true">
       <p class="intro-overlay__name">Dimitar<br>Slavchev</p>
@@ -134,8 +140,21 @@ const covers = all
     }
   }
 
+  // ── Size clamp ────────────────────────────────────────────────
+  // Slot sizes above are fixed pixel values tuned for desktop; on narrow
+  // viewports they can overflow edge-to-edge and collide with the header/
+  // bottom bar. Scale a slot down (preserving aspect ratio) to fit instead.
+  function clampSize(step) {
+    var maxW  = window.innerWidth  - (2 * 24); // 24px ~= mobile gutter
+    var maxH  = window.innerHeight - HEADER - BOTTOM_H - 40;
+    var scale = Math.min(1, maxW / step.w, maxH / step.h);
+    return { slot: step.slot, w: Math.round(step.w * scale), h: Math.round(step.h * scale) };
+  }
+
   // ── Image renderer ────────────────────────────────────────────
   function renderImage(step, cover, isFirstShot) {
+    step = clampSize(step);
+
     // Fade out current element
     if (currentEl) {
       var old = currentEl;
@@ -222,6 +241,16 @@ const covers = all
     clearInterval(timer);
     timer = null;
   }
+
+  // Pause the auto-advance while the tab is hidden, resume when it's back
+  // (unless the thumbnail panel is open, which already pauses it).
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      pauseTimer();
+    } else if (!thumbOpen) {
+      startTimer();
+    }
+  });
 
   // ── Controls ──────────────────────────────────────────────────
   nextBtn.addEventListener('click', function() {
@@ -489,13 +518,18 @@ const covers = all
   var infoRoot = document.querySelector('.home-info');
   if (infoRoot) {
     Array.from(infoRoot.children).forEach(function(child) {
-      child.style.opacity = '0';
-      child.style.transform = 'translateY(5px)';
       if (child.classList.contains('home-info__socials')) {
+        // runLoadAnimations only restores this wrapper's <a> children
+        // (it flattens .home-info__socials into infoEls), never the
+        // wrapper itself — so the wrapper must stay at opacity 1 or its
+        // children remain invisible no matter what happens to them.
         Array.from(child.children).forEach(function(a) {
           a.style.opacity = '0';
           a.style.transform = 'translateY(5px)';
         });
+      } else {
+        child.style.opacity = '0';
+        child.style.transform = 'translateY(5px)';
       }
     });
   }
@@ -591,7 +625,7 @@ const covers = all
     /* ── Shutter color tokens (dark defaults) ─────────────────── */
     --shutter-text:         rgba(255,255,255,0.80);
     --shutter-text-hover:   rgba(255,255,255,1);
-    --shutter-muted:        rgba(255,255,255,0.42);
+    --shutter-muted:        rgba(255,255,255,0.52); /* ~4.5:1 on --color-bg — WCAG AA */
     --shutter-dot:          rgba(255,255,255,0.22);
     --shutter-dot-active:   rgba(255,255,255,0.90);
     --shutter-dot-hover:    rgba(255,255,255,0.88);
@@ -604,7 +638,7 @@ const covers = all
   :global([data-theme="light"]) .shutter-page {
     --shutter-text:         rgba(0,0,0,0.75);
     --shutter-text-hover:   rgba(0,0,0,1);
-    --shutter-muted:        rgba(0,0,0,0.42);
+    --shutter-muted:        rgba(0,0,0,0.54); /* ~4.5:1 on white — WCAG AA */
     --shutter-dot:          rgba(0,0,0,0.22);
     --shutter-dot-active:   rgba(0,0,0,0.90);
     --shutter-dot-hover:    rgba(0,0,0,0.85);
@@ -811,5 +845,18 @@ const covers = all
     /* --gutter is 1.5rem at this breakpoint (set in global.css :root override),
        so padding: 0 var(--gutter) var(--gutter) resolves to 0 1.5rem 1.5rem */
     #thumb-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+
+    /* Bottom bar: the 3-column grid's center column doesn't shrink, so on
+       narrow screens the controls can overflow past the viewport edge.
+       Restack into two full-width rows so controls always have the whole
+       width to center within, independent of the info text's length. */
+    .shutter-bottom {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto;
+      row-gap: var(--space-2);
+    }
+    .home-info        { grid-column: 1; grid-row: 1; }
+    .shutter-controls { grid-column: 1; grid-row: 2; justify-self: center; }
+    .home-copyright   { display: none; }
   }
 </style>

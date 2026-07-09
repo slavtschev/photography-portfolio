@@ -14,31 +14,34 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <!-- ── COLOUR ─────────────────────────────── -->
   <section class="ds-section reveal">
     <h2 class="ds-section-title">Colour</h2>
+    <!-- Swatch backgrounds and hex labels read live CSS custom properties
+         (see the sync script below) instead of hardcoded hex values, so
+         this page can't silently drift from the actual tokens again. -->
     <div class="ds-swatches">
       <div class="ds-swatch">
-        <div class="ds-swatch__block" style="background:#ffffff;border:1px solid #e8e8e8"></div>
+        <div class="ds-swatch__block" style="background:var(--color-bg);border:1px solid var(--color-border)"></div>
         <code>--color-bg</code>
-        <span>#ffffff</span>
+        <span data-var="--color-bg"></span>
       </div>
       <div class="ds-swatch">
-        <div class="ds-swatch__block" style="background:#0a0a0a"></div>
+        <div class="ds-swatch__block" style="background:var(--color-text)"></div>
         <code>--color-text</code>
-        <span>#0a0a0a</span>
+        <span data-var="--color-text"></span>
       </div>
       <div class="ds-swatch">
-        <div class="ds-swatch__block" style="background:#999999"></div>
+        <div class="ds-swatch__block" style="background:var(--color-muted)"></div>
         <code>--color-muted</code>
-        <span>#999999</span>
+        <span data-var="--color-muted"></span>
       </div>
       <div class="ds-swatch">
-        <div class="ds-swatch__block" style="background:#e8e8e8"></div>
+        <div class="ds-swatch__block" style="background:var(--color-border)"></div>
         <code>--color-border</code>
-        <span>#e8e8e8</span>
+        <span data-var="--color-border"></span>
       </div>
       <div class="ds-swatch">
-        <div class="ds-swatch__block" style="background:#f2f2f2"></div>
+        <div class="ds-swatch__block" style="background:var(--color-surface)"></div>
         <code>--color-surface</code>
-        <span>#f2f2f2</span>
+        <span data-var="--color-surface"></span>
       </div>
     </div>
     <p class="ds-note">Monochrome only. Colour lives in the photographs, not the interface.</p>
@@ -50,14 +53,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
     <div class="ds-type-families">
       <div class="ds-type-family">
-        <p class="ds-label">--font-ui · Sans-serif</p>
-        <p style="font-family:system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:2rem;font-weight:800;letter-spacing:-0.02em">ABCDEFG abcdefg 0123</p>
-        <p class="ds-note">system-ui — Used for all UI: nav, labels, dates, captions.</p>
+        <p class="ds-label">--font-ui</p>
+        <p style="font-family:var(--font-ui);font-size:2rem;font-weight:800;letter-spacing:-0.02em">ABCDEFG abcdefg 0123</p>
+        <p class="ds-note">Space Grotesk (system-ui fallback) — Used for all UI: nav, labels, dates, captions.</p>
       </div>
       <div class="ds-type-family">
-        <p class="ds-label">--font-primary · Serif</p>
-        <p style="font-family:Georgia,'Times New Roman',serif;font-size:2rem;font-weight:400;font-style:italic">ABCDEFG abcdefg 0123</p>
-        <p class="ds-note">Georgia — Used for body copy, notes, project descriptions.</p>
+        <p class="ds-label">--font-primary</p>
+        <p style="font-family:var(--font-primary);font-size:2rem;font-weight:400">ABCDEFG abcdefg 0123</p>
+        <p class="ds-note">Space Grotesk (Georgia fallback) — Used for body copy, notes, project descriptions.</p>
       </div>
     </div>
 
@@ -232,6 +235,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   setTimeout(replayFade,   400);
   setTimeout(replayReveal, 700);
   setTimeout(replayWipe,   1000);
+
+  // Keep swatch hex labels in sync with the live CSS variables — reruns
+  // whenever the theme toggle flips [data-theme], so it can't go stale.
+  function syncSwatches() {
+    var cs = getComputedStyle(document.documentElement);
+    document.querySelectorAll('[data-var]').forEach(function(el) {
+      el.textContent = cs.getPropertyValue(el.dataset.var).trim();
+    });
+  }
+  syncSwatches();
+  new MutationObserver(syncSwatches).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  });
 </script>
 
 <style>
