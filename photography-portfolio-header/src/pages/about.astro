@@ -1,0 +1,61 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Set show: true and update src once you have a portrait photo
+const portrait = {
+  show: false,
+  src: '/images/portrait.jpg',
+  alt: 'Dimitar Slavchev',
+};
+---
+
+<BaseLayout
+  title="About"
+  description="About Dimitar Slavchev — photographer based in Sofia."
+>
+  <div class="page-content">
+    <div class="about-card reveal">
+
+      <!-- Portrait -->
+      <div class="about-photo">
+        {portrait.show ? (
+          <img src={portrait.src} alt={portrait.alt} loading="eager" />
+        ) : (
+          <div class="about-photo__placeholder"></div>
+        )}
+      </div>
+
+      <!-- Name -->
+      <h1 class="about-name">Dimitar Slavchev</h1>
+
+      <!-- Bio -->
+      <div class="about-bio">
+        <p>
+          I am a street and documentary photographer based in Sofia.
+          I am drawn to the ordinary — not because it is simple, but because
+          it is where most of life actually happens, unnoticed.
+        </p>
+        <p>
+          Photography, for me, is a practice of attention. Not recording what
+          is there, but asking what it means that it is there.
+        </p>
+        <p>
+          I work slowly. Each project is a sustained look at a small thing.
+          The images do not explain themselves. That is by design.
+        </p>
+      </div>
+
+      <!-- Contact -->
+      <div class="about-contact">
+        <div class="about-contact__row">
+          <a href="mailto:slavchev.dimitar@yahoo.com">slavchev.dimitar@yahoo.com</a>
+        </div>
+        <div class="about-contact__row">
+          <a href="https://www.instagram.com/" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://www.linkedin.com/in/" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</BaseLayout>

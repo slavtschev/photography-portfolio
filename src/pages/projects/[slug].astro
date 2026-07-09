@@ -1,0 +1,185 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const all = await getCollection('projects');
+  const sorted = all.sort((a, b) => {
+    if (a.data.section !== b.data.section) {
+      return a.data.section === 'projects' ? -1 : 1;
+    }
+    return a.data.order - b.data.order;
+  });
+
+  return sorted.map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { data } = project;
+---
+
+<BaseLayout
+  title={data.title}
+  description={data.description ?? `${data.title} — Dimitar Slavchev`}
+  accent={data.accent}
+>
+  <div class="page-content">
+
+    <!-- Header -->
+    <header class="project-header page-arrive">
+      <h1 class="project-header__title">{data.title}</h1>
+      {(data.date || data.year) && (
+        <div class="project-header__meta">
+          <span class="project-header__date">{data.date ?? data.year}</span>
+        </div>
+      )}
+      {data.description && (
+        <p class="project-header__body">{data.description}</p>
+      )}
+    </header>
+
+    <!-- Gallery -->
+    <div class="project-gallery" id="project-gallery">
+      {data.images.map((src, i) => (
+        <div
+          class="project-gallery__cell reveal"
+          data-index={i}
+          role="button"
+          tabindex="0"
+          aria-label={`Open image ${i + 1}`}
+          style={`--reveal-delay: ${(i % 3) * 60}ms`}
+        >
+          <img
+            src={src.startsWith('http') ? src : `/images/${src}`}
+            alt={data.alts?.[i] ?? ''}
+            loading={i < 3 ? 'eager' : 'lazy'}
+          />
+        </div>
+      ))}
+    </div>
+
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button class="lightbox__close" id="lb-close" aria-label="Close">&#x2715;</button>
+
+    <div class="lightbox__wrap" id="lb-wrap">
+      <img id="lb-img" src="" alt="" />
+    </div>
+
+    <button class="lightbox__prev" id="lb-prev" aria-label="Previous image">&#8592;</button>
+    <button class="lightbox__next" id="lb-next" aria-label="Next image">&#8594;</button>
+
+    <div class="lightbox__counter" id="lb-counter">1 / 1</div>
+  </div>
+</BaseLayout>
+
+<script>
+  // ── Lightbox ────────────────────────────────────────────────────────────────
+  function initLightbox() {
+    const gallery   = document.getElementById('project-gallery');
+    const lightbox  = document.getElementById('lightbox');
+    const wrap      = document.getElementById('lb-wrap');
+    const img       = document.getElementById('lb-img') as HTMLImageElement | null;
+    const counter   = document.getElementById('lb-counter');
+    const closeBtn  = document.getElementById('lb-close');
+    const prevBtn   = document.getElementById('lb-prev');
+    const nextBtn   = document.getElementById('lb-next');
+
+    if (!gallery || !lightbox || !img) return;
+
+    // Collect all cells that have an img inside them
+    const cells  = Array.from(gallery.querySelectorAll<HTMLElement>('.project-gallery__cell'));
+    const images = cells.map(c => {
+      const el = c.querySelector('img');
+      return { src: el?.src ?? '', alt: el?.alt ?? '' };
+    }).filter(d => d.src);
+
+    let current = 0;
+
+    function open(index: number) {
+      current = Math.max(0, Math.min(index, images.length - 1));
+      if (!images[current]) return;
+      // Reset any inline styles from navigation
+      img!.style.opacity = '';
+      img!.style.transition = '';
+      img!.src = images[current].src;
+      img!.alt = images[current].alt;
+      if (counter) counter.textContent = `${current + 1} / ${images.length}`;
+      // Compensate scrollbar
+      const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.paddingRight = `${scrollbarW}px`;
+      document.body.style.overflow = 'hidden';
+      // Stage 1: backdrop fades in
+      lightbox!.classList.add('is-open');
+      // Stage 2: wrap slides up
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        lightbox!.classList.add('wrap-in');
+      }));
+      // Stage 3: image wipes left → right
+      setTimeout(() => lightbox!.classList.add('img-in'), 320);
+    }
+
+    function close() {
+      // Reset any navigation inline styles so clip-path works
+      img!.style.opacity = '';
+      img!.style.transition = '';
+      // Stage 1: image wipes back
+      lightbox!.classList.remove('img-in');
+      // Stage 2: wrap slides down + backdrop fades (after image wipe completes)
+      setTimeout(() => {
+        lightbox!.classList.remove('wrap-in');
+        lightbox!.classList.remove('is-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        setTimeout(() => { img!.src = ''; }, 700);
+      }, 600);
+    }
+
+    function goTo(next: number) {
+      current = ((next % images.length) + images.length) % images.length;
+      // Fade out (override clip-path transition with opacity only)
+      img!.style.transition = 'opacity 140ms ease-in, clip-path 0ms';
+      img!.style.opacity = '0';
+      setTimeout(() => {
+        img!.src = images[current].src;
+        img!.alt = images[current].alt;
+        if (counter) counter.textContent = `${current + 1} / ${images.length}`;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          img!.style.transition = 'opacity 240ms ease-out, clip-path 0ms';
+          img!.style.opacity = '1';
+        }));
+      }, 150);
+    }
+
+    // Open on cell click / keyboard
+    cells.forEach((cell, i) => {
+      cell.addEventListener('click',    () => open(i));
+      cell.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') open(i); });
+    });
+
+    closeBtn?.addEventListener('click',  close);
+    prevBtn?.addEventListener('click',   () => goTo(current - 1));
+    nextBtn?.addEventListener('click',   () => goTo(current + 1));
+
+    // Click outside the image
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) close();
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (!lightbox.classList.contains('is-open')) return;
+      if (e.key === 'Escape')      close();
+      if (e.key === 'ArrowRight')  goTo(current + 1);
+      if (e.key === 'ArrowLeft')   goTo(current - 1);
+    });
+  }
+
+  initLightbox();
+  document.addEventListener('astro:page-load', initLightbox);
+</script>

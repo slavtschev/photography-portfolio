@@ -1,0 +1,815 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const all = await getCollection('projects');
+const covers = all
+  .filter(p => p.data.cover)
+  .map(p => ({ src: p.data.cover, title: p.data.title, slug: p.slug }));
+---
+
+<BaseLayout title="Dimitar Slavchev" description="Photography as a way of seeing.">
+
+  <!-- ── Shutter page ────────────────────────────────────────── -->
+  <div class="shutter-page" data-nav-dark>
+
+    <!-- Intro overlay: shows name on very first session visit -->
+    <div id="intro-overlay" class="intro-overlay" aria-hidden="true">
+      <p class="intro-overlay__name">Dimitar<br>Slavchev</p>
+    </div>
+
+    <div id="photo-field"></div>
+
+    <div id="thumb-panel">
+      <div id="thumb-grid"></div>
+    </div>
+
+    <!-- Bottom bar: info (left) · controls (center) · copyright (right) -->
+    <!-- All three share the same bottom baseline via flex align-items: flex-end -->
+    <div class="shutter-bottom">
+
+      <aside class="home-info">
+        <p class="home-info__role">Street &amp; documentary photographer<br>based in Sofia</p>
+        <a href="mailto:slavchev.dimitar@yahoo.com" class="home-info__link">slavchev.dimitar@yahoo.com</a>
+        <div class="home-info__socials">
+          <a href="https://www.instagram.com/" class="home-info__link" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://www.linkedin.com/in/" class="home-info__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </aside>
+
+      <!-- Controls: prev · slides · next, each with dot + label -->
+      <div class="shutter-controls">
+        <button class="ctrl ctrl--prev" id="prev-btn" aria-label="Previous shot">
+          <span class="ctrl__dot"></span>
+          <span class="ctrl__label">Prev</span>
+        </button>
+        <button class="ctrl ctrl--thumb" id="thumb-btn" aria-label="Toggle thumbnails">
+          <span class="ctrl__dot ctrl__dot--sq"></span>
+          <span class="ctrl__label">Thumbnails</span>
+        </button>
+        <button class="ctrl ctrl--next" id="next-btn" aria-label="Next shot">
+          <span class="ctrl__dot"></span>
+          <span class="ctrl__label">Next</span>
+        </button>
+      </div>
+
+      <p class="home-copyright">© 2026 all rights reserved</p>
+
+    </div>
+
+  </div>
+
+  <!-- ── Lightbox — portal slot → root stacking context ──────── -->
+  <div slot="portal" id="s-lb" class="s-lb" aria-hidden="true" role="dialog" aria-modal="true">
+    <button class="s-lb__close" id="s-lb-close" aria-label="Close">Close</button>
+    <button class="s-lb__prev"  id="s-lb-prev"  aria-label="Previous">&#8592;</button>
+    <button class="s-lb__next"  id="s-lb-next"  aria-label="Next">&#8594;</button>
+    <div class="s-lb__wrap">
+      <img id="s-lb-img" src="" alt="" />
+    </div>
+    <div class="s-lb__info" id="s-lb-info">
+      Part of <a class="s-lb__info-link" id="s-lb-info-link" href=""></a>
+    </div>
+  </div>
+
+</BaseLayout>
+
+<script define:vars={{ covers }}>
+
+  // ── Element refs ───────────────────────────────────────────────
+  var field     = document.getElementById('photo-field');
+  var panel     = document.getElementById('thumb-panel');
+  var grid      = document.getElementById('thumb-grid');
+  var prevBtn   = document.getElementById('prev-btn');
+  var thumbBtn  = document.getElementById('thumb-btn');
+  var nextBtn   = document.getElementById('next-btn');
+  var closeBtn  = document.getElementById('thumb-close-btn');
+
+  // ── Timing ────────────────────────────────────────────────────
+  var HEADER    = 72;   // matches --header-height CSS token
+  var BOTTOM_H  = 200;  // matches --bottom-h CSS variable; reserved for bottom bar
+  var NAV_PAD   = 64;
+  var FADE_OUT  = 70;
+  var GAP       = 90;
+  var FADE_IN   = 850;   // normal transition fade
+  var INTERVAL  = 2600;
+
+  // First shot: centered, only used on initial load
+  var FIRST_STEP = { slot: 'center', w: 220, h: 330 };
+
+  // Loop: cycles for all shots after the first — all centered, slightly smaller
+  var LOOP = [
+    { slot: 'center', w: 300, h: 450 },
+    { slot: 'center', w: 420, h: 280 },
+    { slot: 'center', w: 260, h: 390 },
+  ];
+
+  // ── State ─────────────────────────────────────────────────────
+  var isFirst     = true;   // true until the first centered shot is shown
+  var currentLoop = -1;     // index into LOOP of what's currently visible (-1 = center)
+  var currentImg  = -1;     // index into covers of what's currently visible (-1 = none)
+  var currentEl   = null;   // the live DOM element
+  var timer       = null;
+  var thumbOpen   = false;
+
+  // ── Position calculator ───────────────────────────────────────
+  // Positions are relative to #photo-field (top = header-height from viewport top).
+  // 'center' uses true viewport center so images appear mid-screen.
+  function getPos(slot, w, h) {
+    var vw    = window.innerWidth;
+    var vh    = window.innerHeight;
+    // #photo-field now spans the full viewport (top:0, bottom:0),
+    // so fieldH === vh and all offsets are relative to the viewport edge.
+    var fieldH = vh;
+    switch (slot) {
+      // True viewport center — no header/bottom-bar offsets.
+      case 'center':
+        return {
+          top:  Math.round((vh - h) / 2),
+          left: Math.round((vw - w) / 2)
+        };
+      case 'top-right':    return { top: NAV_PAD, left: vw - w - NAV_PAD };
+      case 'top-left':     return { top: NAV_PAD, left: NAV_PAD };
+      case 'bottom-right': return { top: fieldH - h - NAV_PAD, left: vw - w - NAV_PAD };
+    }
+  }
+
+  // ── Image renderer ────────────────────────────────────────────
+  function renderImage(step, cover, isFirstShot) {
+    // Fade out current element
+    if (currentEl) {
+      var old = currentEl;
+      currentEl = null;
+      old.style.transition = 'opacity ' + FADE_OUT + 'ms ease';
+      old.style.opacity    = '0';
+      setTimeout(function() { old.remove(); }, FADE_OUT);
+    }
+
+    var delay = currentEl ? FADE_OUT + GAP : 0;
+
+    setTimeout(function() {
+      var pos = getPos(step.slot, step.w, step.h);
+      var el  = document.createElement('div');
+      el.style.cssText = [
+        'position:absolute',
+        'top:'   + pos.top  + 'px',
+        'left:'  + pos.left + 'px',
+        'width:' + step.w   + 'px',
+        'height:'+ step.h   + 'px',
+        'opacity:0',
+        isFirstShot ? 'transform:scale(0.95)' : '',
+      ].filter(Boolean).join(';');
+
+      var img = document.createElement('img');
+      img.src       = cover.src;
+      img.alt       = cover.title;
+      img.width     = step.w;
+      img.height    = step.h;
+      img.decoding  = 'async';
+      img.draggable = false;
+      img.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+      el.appendChild(img);
+      field.appendChild(el);
+      currentEl = el;
+
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          if (isFirstShot) {
+            // Scale + fade: elegant, restrained
+            el.style.transition = 'opacity 900ms cubic-bezier(0.25,0,0,1), transform 900ms cubic-bezier(0.25,0,0,1)';
+            el.style.opacity    = '1';
+            el.style.transform  = 'scale(1)';
+          } else {
+            el.style.transition = 'opacity ' + FADE_IN + 'ms ease';
+            el.style.opacity    = '1';
+          }
+        });
+      });
+    }, delay);
+  }
+
+  // ── Navigation ────────────────────────────────────────────────
+  function goNext() {
+    if (!covers.length) return;
+    if (isFirst) {
+      isFirst     = false;
+      currentImg  = 0;
+      currentLoop = -1;
+      renderImage(FIRST_STEP, covers[0], true);
+    } else {
+      // Wrap forward in both LOOP and covers
+      currentLoop = (currentLoop + 1) % LOOP.length;
+      currentImg  = (currentImg  + 1) % covers.length;
+      renderImage(LOOP[currentLoop], covers[currentImg], false);
+    }
+  }
+
+  function goPrev() {
+    if (!covers.length) return;
+    // Can't go back from the first centered shot (no prev state)
+    if (currentLoop < 0) return;
+    // Wrap backward in both LOOP and covers
+    currentLoop = (currentLoop - 1 + LOOP.length)  % LOOP.length;
+    currentImg  = (currentImg  - 1 + covers.length) % covers.length;
+    renderImage(LOOP[currentLoop], covers[currentImg], false);
+  }
+
+  function startTimer() {
+    clearInterval(timer);
+    timer = setInterval(goNext, INTERVAL);
+  }
+  function pauseTimer() {
+    clearInterval(timer);
+    timer = null;
+  }
+
+  // ── Controls ──────────────────────────────────────────────────
+  nextBtn.addEventListener('click', function() {
+    if (thumbOpen) closeThumbs();
+    goNext();
+    startTimer();
+  });
+
+  prevBtn.addEventListener('click', function() {
+    if (thumbOpen) closeThumbs();
+    goPrev();
+    startTimer();
+  });
+
+  thumbBtn.addEventListener('click', function() { thumbOpen ? closeThumbs() : openThumbs(); });
+  if (closeBtn) closeBtn.addEventListener('click', closeThumbs);
+
+  // ── Thumbnails ────────────────────────────────────────────────
+  function buildThumbs() {
+    grid.innerHTML = '';
+    covers.forEach(function(c, idx) {
+      var btn = document.createElement('button');
+      btn.className = 'thumb-item';
+      var img = document.createElement('img');
+      img.src      = c.src;
+      img.alt      = c.title;
+      img.width    = 400;
+      img.height   = 400;
+      img.decoding = 'async';
+      img.style.cssText = 'display:block;width:100%;aspect-ratio:1/1;object-fit:cover;';
+      btn.appendChild(img);
+      btn.addEventListener('click', function() { lbOpen(idx); });
+      grid.appendChild(btn);
+    });
+  }
+
+  var ARROW_DUR  = '300ms';
+  var ARROW_EASE = 'cubic-bezier(0.4,0,0.6,1)';  // symmetric ease for clean snap
+  var ARROW_IN_EASE = 'cubic-bezier(0.2,0,0,1)'; // fast-settle for return
+
+  function openThumbs() {
+    thumbOpen = true;
+    pauseTimer();
+    buildThumbs();
+    panel.classList.add('is-open');
+    thumbBtn.classList.add('is-active');
+
+    // Slide + fade out arrows away from center
+    var t = 'opacity ' + ARROW_DUR + ' ' + ARROW_EASE + ', transform ' + ARROW_DUR + ' ' + ARROW_EASE;
+    prevBtn.style.transition = t;
+    nextBtn.style.transition = t;
+    prevBtn.style.opacity    = '0';
+    prevBtn.style.transform  = 'translateX(-18px)';
+    prevBtn.style.pointerEvents = 'none';
+    nextBtn.style.opacity    = '0';
+    nextBtn.style.transform  = 'translateX(18px)';
+    nextBtn.style.pointerEvents = 'none';
+
+    var lbl = thumbBtn.querySelector('.ctrl__label');
+    if (lbl) lbl.textContent = 'Slides';
+  }
+
+  function closeThumbs() {
+    thumbOpen = false;
+    panel.classList.remove('is-open');
+    thumbBtn.classList.remove('is-active');
+
+    // Slide + fade in arrows back to center
+    var t = 'opacity 360ms ' + ARROW_IN_EASE + ', transform 400ms ' + ARROW_IN_EASE;
+    prevBtn.style.transition = t;
+    nextBtn.style.transition = t;
+    prevBtn.style.opacity    = '1';
+    prevBtn.style.transform  = 'translateX(0)';
+    prevBtn.style.pointerEvents = 'auto';
+    nextBtn.style.opacity    = '1';
+    nextBtn.style.transform  = 'translateX(0)';
+    nextBtn.style.pointerEvents = 'auto';
+
+    var lbl = thumbBtn.querySelector('.ctrl__label');
+    if (lbl) lbl.textContent = 'Thumbnails';
+    startTimer();
+  }
+
+  // ── Lightbox ──────────────────────────────────────────────────
+  var lb          = document.getElementById('s-lb');
+  var lbImg       = document.getElementById('s-lb-img');
+  var lbClose     = document.getElementById('s-lb-close');
+  var lbPrev      = document.getElementById('s-lb-prev');
+  var lbNext      = document.getElementById('s-lb-next');
+  var lbInfoLink  = document.getElementById('s-lb-info-link');
+  var lbIdx       = 0;
+
+  function lbOpen(idx) {
+    lbIdx = ((idx % covers.length) + covers.length) % covers.length;
+    lbImg.src = covers[lbIdx].src;
+    lbImg.alt = covers[lbIdx].title;
+    if (lbInfoLink && covers[lbIdx].slug && covers[lbIdx].title) {
+      lbInfoLink.href = '/projects/' + covers[lbIdx].slug;
+      lbInfoLink.textContent = covers[lbIdx].title;
+    }
+    lb.classList.add('is-open');
+    lb.removeAttribute('aria-hidden');
+  }
+
+  function lbDismiss() {
+    lb.classList.remove('is-open');
+    lb.setAttribute('aria-hidden', 'true');
+  }
+
+  lbClose.addEventListener('click', lbDismiss);
+  lbPrev.addEventListener('click', function() { lbOpen(lbIdx - 1); });
+  lbNext.addEventListener('click', function() { lbOpen(lbIdx + 1); });
+  lb.addEventListener('click', function(e) { if (e.target === lb) lbDismiss(); });
+
+  document.addEventListener('keydown', function(e) {
+    if (lb.classList.contains('is-open')) {
+      if (e.key === 'Escape')     lbDismiss();
+      if (e.key === 'ArrowLeft')  lbOpen(lbIdx - 1);
+      if (e.key === 'ArrowRight') lbOpen(lbIdx + 1);
+      return;
+    }
+    if (e.key === 'ArrowRight' || e.code === 'Space') { e.preventDefault(); if (!thumbOpen) { goNext(); startTimer(); } }
+    if (e.key === 'ArrowLeft')                        { e.preventDefault(); if (!thumbOpen) { goPrev(); startTimer(); } }
+    if (e.key === 'Escape' && thumbOpen) closeThumbs();
+  });
+
+  // ── Exit sequence ─────────────────────────────────────────────
+  // Photo fades → info text staggers out → curtain slides down → navigate
+
+  var PHOTO_FADE  = 200;
+  var TEXT_DELAY  = 50;
+  var TEXT_DUR    = 120;
+  var TEXT_GAP    = 38;
+  var CURTAIN_DUR = 260;
+
+  document.addEventListener('click', function(e) {
+    if (lb.classList.contains('is-open')) return;
+    var target = e.target;
+    var link = target && target.closest ? target.closest('a[href]') : null;
+    if (!link) return;
+    var href = link.getAttribute('href') || '';
+    if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if (link.target === '_blank') return;
+    try {
+      var url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) return;
+    } catch(err) { return; }
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    clearInterval(timer);
+
+    // Step 1: fade current photo
+    if (currentEl) {
+      currentEl.style.transition = 'opacity ' + PHOTO_FADE + 'ms ease';
+      currentEl.style.opacity    = '0';
+    }
+
+    // Step 2: stagger info text out
+    var infoEls = [];
+    var infoRoot = document.querySelector('.home-info');
+    if (infoRoot) {
+      Array.from(infoRoot.children).forEach(function(child) {
+        if (child.classList.contains('home-info__socials')) {
+          Array.from(child.children).forEach(function(a) { infoEls.push(a); });
+        } else {
+          infoEls.push(child);
+        }
+      });
+    }
+
+    setTimeout(function() {
+      infoEls.forEach(function(el, i) {
+        var d = i * TEXT_GAP;
+        el.style.transition = 'opacity ' + TEXT_DUR + 'ms ease ' + d + 'ms, transform ' + TEXT_DUR + 'ms ease ' + d + 'ms';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            el.style.opacity   = '0';
+            el.style.transform = 'translateY(-6px)';
+          });
+        });
+      });
+    }, TEXT_DELAY);
+
+    // Step 3: curtain down
+    var textTotal = TEXT_DELAY + TEXT_DUR + (infoEls.length > 0 ? (infoEls.length - 1) * TEXT_GAP : 0);
+    var waitMs    = Math.max(PHOTO_FADE, textTotal) + 20;
+
+    setTimeout(function() {
+      var curtain = document.getElementById('page-curtain');
+      sessionStorage.setItem('page-transitioning', '1');
+      if (curtain) {
+        curtain.style.transition    = 'none';
+        curtain.style.opacity       = '0';
+        curtain.style.pointerEvents = 'none';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            curtain.style.transition    = 'opacity ' + CURTAIN_DUR + 'ms ease';
+            curtain.style.opacity       = '1';
+            curtain.style.pointerEvents = 'all';
+          });
+        });
+        setTimeout(function() { window.location.href = href; }, CURTAIN_DUR + 20);
+      } else {
+        window.location.href = href;
+      }
+    }, waitMs);
+
+  }, true);
+
+  // ── Load animations ───────────────────────────────────────────
+  // animDelay:  global offset (used when overlay is still visible)
+  // ctrlDelay:  when controls reveal relative to this call — defaults to
+  //             INTERVAL + FADE_OUT so they appear right after the first
+  //             centered photo fades out.
+
+  function runLoadAnimations(animDelay, ctrlDelay) {
+    var d  = animDelay || 0;
+    var cd = ctrlDelay !== undefined ? ctrlDelay : d + 350;
+
+    // Controls: opacity + translateY reveal, staggered
+    var ctrls = [prevBtn, thumbBtn, nextBtn];
+    ctrls.forEach(function(el) {
+      if (el) { el.style.opacity = '0'; el.style.transform = 'translateY(5px)'; }
+    });
+    ctrls.forEach(function(el, i) {
+      if (!el) return;
+      setTimeout(function() {
+        el.style.transition = 'opacity 360ms cubic-bezier(0.25,0,0,1), transform 360ms cubic-bezier(0.25,0,0,1)';
+        el.style.opacity    = '1';
+        el.style.transform  = 'translateY(0)';
+      }, cd + i * 75);
+    });
+
+    // Info panel: opacity 0 + translateY(5px) → visible, staggered
+    var infoEls = [];
+    var infoRoot = document.querySelector('.home-info');
+    if (infoRoot) {
+      Array.from(infoRoot.children).forEach(function(child) {
+        if (child.classList.contains('home-info__socials')) {
+          Array.from(child.children).forEach(function(a) { infoEls.push(a); });
+        } else {
+          infoEls.push(child);
+        }
+      });
+    }
+    infoEls.forEach(function(el) {
+      el.style.opacity   = '0';
+      el.style.transform = 'translateY(5px)';
+    });
+    infoEls.forEach(function(el, i) {
+      setTimeout(function() {
+        el.style.transition = 'opacity 400ms cubic-bezier(0.25,0,0,1), transform 400ms cubic-bezier(0.25,0,0,1), color 200ms ease';
+        el.style.opacity    = '1';
+        el.style.transform  = 'translateY(0)';
+      }, d + 280 + i * 65);
+    });
+  }
+
+  // ── Set initial states before first paint ─────────────────────
+  // (prevents flash before runLoadAnimations sets them)
+  var ctrls = [prevBtn, thumbBtn, nextBtn];
+  ctrls.forEach(function(el) { if (el) { el.style.opacity = '0'; el.style.transform = 'translateY(5px)'; } });
+
+  var infoRoot = document.querySelector('.home-info');
+  if (infoRoot) {
+    Array.from(infoRoot.children).forEach(function(child) {
+      child.style.opacity = '0';
+      child.style.transform = 'translateY(5px)';
+      if (child.classList.contains('home-info__socials')) {
+        Array.from(child.children).forEach(function(a) {
+          a.style.opacity = '0';
+          a.style.transform = 'translateY(5px)';
+        });
+      }
+    });
+  }
+
+  // ── Curtain entry + Intro + Start ─────────────────────────────
+
+  var overlay        = document.getElementById('intro-overlay');
+  var hasVisited     = sessionStorage.getItem('site-visited');
+  var fromTransition = sessionStorage.getItem('page-transitioning');
+
+  // Curtain entry: arriving from another page
+  if (fromTransition) {
+    sessionStorage.removeItem('page-transitioning');
+    var curtainEl = document.getElementById('page-curtain');
+    if (curtainEl) {
+      curtainEl.style.transition    = 'none';
+      curtainEl.style.opacity       = '1';
+      curtainEl.style.pointerEvents = 'all';
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          curtainEl.style.transition    = 'opacity ' + CURTAIN_DUR + 'ms ease';
+          curtainEl.style.opacity       = '0';
+          curtainEl.style.pointerEvents = 'none';
+        });
+      });
+    }
+  }
+
+  if (!hasVisited && !fromTransition) {
+    // ── First-ever visit: show name overlay, then start slideshow ──
+    if (overlay) {
+      overlay.style.opacity = '0';
+      overlay.style.display = 'flex';
+
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          overlay.style.transition = 'opacity 650ms cubic-bezier(0.25,0,0,1)';
+          overlay.style.opacity    = '1';
+        });
+      });
+
+      // Hold, then fade out
+      setTimeout(function() {
+        overlay.style.transition = 'opacity 500ms ease';
+        overlay.style.opacity    = '0';
+        setTimeout(function() {
+          overlay.style.display = 'none';
+          sessionStorage.setItem('site-visited', '1');
+          // Photo starts immediately; buttons reveal after it fades out
+          runLoadAnimations(0, 0);
+          goNext();
+          startTimer();
+        }, 520);
+      }, 1400); // 650ms fade-in + 750ms hold
+    } else {
+      runLoadAnimations(0, 0);
+      goNext();
+      startTimer();
+    }
+  } else {
+    // ── Returning visit or curtain entry: straight to slideshow ──
+    if (overlay) overlay.style.display = 'none';
+    runLoadAnimations(0, 0);
+    goNext();
+    startTimer();
+  }
+
+</script>
+
+<style>
+  :global(body:has(.shutter-page)) { background: var(--color-bg) !important; }
+  :global(body:has(.shutter-page) .site-main) { animation: none !important; }
+  :global(body:has(.shutter-page) .copyright) { display: none !important; }
+
+  /* Header slides in from slightly above on every home page load */
+  :global(body:has(.shutter-page) .site-header) {
+    animation: header-arrive 480ms cubic-bezier(0.25, 0, 0, 1) both;
+  }
+  @keyframes header-arrive {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .shutter-page {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    margin-top: calc(var(--header-height, 72px) * -1);
+    padding-top: var(--header-height, 72px);
+    user-select: none;
+    -webkit-user-select: none;
+    --bottom-h: 200px;  /* height reserved for the bottom bar */
+
+    /* ── Shutter color tokens (dark defaults) ─────────────────── */
+    --shutter-text:         rgba(255,255,255,0.80);
+    --shutter-text-hover:   rgba(255,255,255,1);
+    --shutter-muted:        rgba(255,255,255,0.42);
+    --shutter-dot:          rgba(255,255,255,0.22);
+    --shutter-dot-active:   rgba(255,255,255,0.90);
+    --shutter-dot-hover:    rgba(255,255,255,0.88);
+    --shutter-label:        rgba(255,255,255,0.22);
+    --shutter-label-hover:  rgba(255,255,255,0.55);
+    --shutter-overlay-text: rgba(255,255,255,0.88);
+  }
+
+  /* ── Light theme overrides ────────────────────────────────── */
+  :global([data-theme="light"]) .shutter-page {
+    --shutter-text:         rgba(0,0,0,0.75);
+    --shutter-text-hover:   rgba(0,0,0,1);
+    --shutter-muted:        rgba(0,0,0,0.42);
+    --shutter-dot:          rgba(0,0,0,0.22);
+    --shutter-dot-active:   rgba(0,0,0,0.90);
+    --shutter-dot-hover:    rgba(0,0,0,0.85);
+    --shutter-label:        rgba(0,0,0,0.22);
+    --shutter-label-hover:  rgba(0,0,0,0.55);
+    --shutter-overlay-text: rgba(0,0,0,0.88);
+  }
+
+  /* ── Intro overlay ────────────────────────────────────────── */
+  .intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: var(--color-bg);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .intro-overlay__name {
+    font-family: var(--font-ui, system-ui);
+    font-size: clamp(2rem, 5vw, 4.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    text-transform: uppercase;
+    color: var(--shutter-overlay-text);
+    text-align: center;
+  }
+
+  /* ── Photo field ──────────────────────────────────────────── */
+  /* position:fixed anchors directly to the viewport, so vh/vw in getPos
+     map 1-to-1 and photos land at true viewport center.
+     (position:absolute was offset by .shutter-page's -72px margin-top.) */
+  #photo-field {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* ── Bottom bar ────────────────────────────────────────────── */
+  /* 3-column grid: info (left) | controls (center, true 50%) | copyright (right).
+     align-items:end + padding-bottom:var(--gutter) anchors all three bottom edges
+     at the same distance from the viewport edge as the horizontal gutters. */
+  .shutter-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--bottom-h, 200px);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: end;
+    padding: 0 var(--gutter) calc(var(--header-height, 72px) / 2);
+    pointer-events: none;
+    z-index: 25;
+  }
+
+  /* ── Info — bottom-left ────────────────────────────────────── */
+  .home-info {
+    pointer-events: none;
+  }
+  .home-info a { pointer-events: auto; }
+
+  /* ── Controls — bottom-center ─────────────────────────────── */
+  .shutter-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 0;
+    pointer-events: auto;
+    justify-self: center;
+  }
+
+  /* ── Copyright — bottom-right ─────────────────────────────── */
+  .home-copyright {
+    justify-self: end;
+    font-family: var(--font-ui, system-ui);
+    font-size: 0.5625rem;
+    letter-spacing: 0.02em;
+    color: var(--shutter-muted);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  /* Each button has generous padding for a clear hit area.
+     No bottom padding so label aligns with the bottom-bar baseline. */
+  .ctrl {
+    border: none; cursor: pointer;
+    background: none;
+    padding: 20px 22px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    /* opacity + transform set by JS load animation and hide/show logic */
+    transition: opacity 280ms ease, transform 280ms ease;
+  }
+
+  /* Visible dot */
+  .ctrl__dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--shutter-dot);
+    flex-shrink: 0;
+    transition: background 200ms ease, transform 120ms cubic-bezier(0.25,0,0,1);
+  }
+  .ctrl__dot--sq { border-radius: 0; }
+
+  /* Label beneath dot */
+  .ctrl__label {
+    font-family: var(--font-ui, system-ui);
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--shutter-label);
+    line-height: 1;
+    transition: color 200ms ease;
+  }
+
+  /* Hover — dot brightens, label becomes visible */
+  .ctrl:hover .ctrl__dot   { background: var(--shutter-dot-hover); }
+  .ctrl:hover .ctrl__label { color: var(--shutter-label-hover); }
+
+  /* Directional hints */
+  .ctrl--prev:hover  .ctrl__dot { transform: translateX(-4px); }
+  .ctrl--next:hover  .ctrl__dot { transform: translateX(4px); }
+  .ctrl--thumb:hover .ctrl__dot { transform: scale(1.4); }
+
+  /* Press */
+  .ctrl:active .ctrl__dot { transform: scale(0.65) !important; }
+
+  /* Active state — thumb panel open */
+  .ctrl.is-active .ctrl__dot  { background: var(--shutter-dot-active); }
+  .ctrl.is-active .ctrl__label { color: var(--shutter-label-hover); }
+
+  /* ── Thumbnail panel ─────────────────────────────────────── */
+  #thumb-panel {
+    position: absolute;
+    top: var(--header-height, 72px);
+    left: 0; right: 0;
+    bottom: var(--bottom-h, 200px);
+    background: var(--color-bg);
+    z-index: 20;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 300ms ease, visibility 300ms;
+  }
+  #thumb-panel.is-open { opacity: 1; visibility: visible; }
+
+  #thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    padding: var(--gutter);
+  }
+
+  :global(.thumb-item) {
+    display: block;
+    overflow: hidden;
+    background: none; border: none; padding: 0;
+    cursor: pointer;
+  }
+  :global(.thumb-item img) {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    transition: opacity 180ms ease;
+  }
+  :global(.thumb-item:hover img) { opacity: 0.55; }
+
+  /* ── Info panel typography ────────────────────────────────── */
+  .home-info__role {
+    font-family: var(--font-ui, system-ui);
+    font-size: 0.6875rem;
+    letter-spacing: 0.01em;
+    color: var(--shutter-text);
+    line-height: 1.2;
+    margin-bottom: 0.3rem;
+  }
+
+  .home-info__link {
+    display: block;
+    font-family: var(--font-ui, system-ui);
+    font-size: 0.6875rem;
+    letter-spacing: 0.01em;
+    color: var(--shutter-text);
+    text-decoration: none;
+    line-height: 1.2;
+    transition: color 200ms ease;
+  }
+  .home-info__link:hover { color: var(--shutter-text-hover); }
+
+  .home-info__socials { margin-top: 0.25rem; display: flex; gap: 0.875rem; }
+
+  @media (max-width: 1024px) {
+    #thumb-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  @media (max-width: 768px) {
+    /* --gutter is 1.5rem at this breakpoint (set in global.css :root override),
+       so padding: 0 var(--gutter) var(--gutter) resolves to 0 1.5rem 1.5rem */
+    #thumb-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  }
+</style>

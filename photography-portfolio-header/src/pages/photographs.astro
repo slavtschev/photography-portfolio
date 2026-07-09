@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Add curated standalone photographs here.
+const photographs: { src: string; alt: string }[] = [
+  // { src: '/images/selected/01.jpg', alt: '' },
+];
+---
+
+<BaseLayout
+  title="Photographs"
+  description="Selected photographs by Dimitar Slavchev."
+>
+  <div class="page-content" style="max-width: 900px">
+    <div class="photographs-sequence" style="margin-top: var(--space-3)">
+      {photographs.length > 0 ? (
+        photographs.map(photo => (
+          <div class="photograph-item reveal">
+            <img src={photo.src} alt={photo.alt} loading="lazy" />
+          </div>
+        ))
+      ) : (
+        [1, 2, 3].map(() => (
+          <div class="photograph-item reveal" style="aspect-ratio: 3/2; background: var(--color-surface)"></div>
+        ))
+      )}
+    </div>
+  </div>
+</BaseLayout>

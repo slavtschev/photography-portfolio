@@ -1,0 +1,1424 @@
+/* ============================================
+   FONT
+   Drop your font files in /public/fonts/ and
+   uncomment + update this block.
+   ============================================ */
+
+/* @font-face {
+  font-family: 'SiteFont';
+  src: url('/fonts/SiteFont-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SiteFont';
+  src: url('/fonts/SiteFont-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SiteFont';
+  src: url('/fonts/SiteFont-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+} */
+
+
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+:root {
+  /* Color — dark mode default.
+     All pages are dark by default; light mode is opt-in via [data-theme="light"]. */
+  --color-bg:       #0a0a0a;
+  --color-text:     #efefef;
+  --color-muted:    #666666;
+  --color-border:   #2a2a2a;
+  --color-surface:  #141414;
+
+  /* Per-project accent — default matches text, overridden per project */
+  --color-accent: var(--color-text);
+
+  /* Typography */
+  --font-primary: 'Space Grotesk', Georgia, 'Times New Roman', serif;
+  --font-ui:      'Space Grotesk', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Type scale */
+  --text-xs:   0.6875rem;  /* 11px */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 1rem;       /* 16px */
+  --text-md:   1.125rem;   /* 18px */
+  --text-lg:   1.375rem;   /* 22px */
+  --text-xl:   1.75rem;    /* 28px */
+  --text-2xl:  2.25rem;    /* 36px */
+
+  /* Spacing */
+  --space-1:  0.375rem;  /*  6px */
+  --space-2:  0.75rem;   /* 12px */
+  --space-3:  1.25rem;   /* 20px */
+  --space-4:  2rem;      /* 32px */
+  --space-5:  3rem;      /* 48px */
+  --space-6:  4.5rem;    /* 72px */
+  --space-7:  7rem;      /* 112px */
+
+  /* Layout */
+  --sidebar-width: 190px;
+  --header-height: 72px;
+
+  /* Unified page gutter — same value used for every edge on every page.
+     Overridden at each breakpoint to keep proportions consistent. */
+  --gutter: 4rem;
+
+  /* Animation */
+  --ease:           cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-reveal:    cubic-bezier(0.87, 0, 0.13, 1); /* slow-fast-slow: content materialises */
+  --dur-fast:       240ms;
+  --dur-base:       520ms;
+  --dur-slow:       820ms;
+  --dur-reveal:     700ms;   /* longer for the materialise effect */
+}
+
+/* ============================================
+   LIGHT THEME OVERRIDE
+   Applied when JS sets data-theme="light" on <html>.
+   ============================================ */
+[data-theme="light"] {
+  --color-bg:      #ffffff;
+  --color-text:    #0a0a0a;
+  --color-muted:   #999999;
+  --color-border:  #e8e8e8;
+  --color-surface: #f2f2f2;
+}
+
+
+/* ============================================
+   RESET
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Reserve scrollbar space on all pages so the nav never shifts when
+     a scrollbar appears or disappears (e.g. homepage ↔ inner pages). */
+  scrollbar-gutter: stable;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  transition: background-color 350ms ease, color 350ms ease;
+}
+
+img, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+}
+
+
+/* ============================================
+   HEADER LAYOUT
+   mix-blend-mode: difference makes nav text always readable —
+   white over dark bg stays white; white over light bg becomes black.
+   No JS colour-switching needed.
+   ============================================ */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--gutter);
+  background: transparent;
+  z-index: 200;
+}
+
+/* Theme toggle — centered absolutely between name and nav.
+   Inherits mix-blend-mode:difference from the header stacking context:
+   icon is #fff, auto-inverts to black on light backgrounds. */
+.theme-toggle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-text);
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  cursor: pointer;
+  opacity: 0.42;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 200ms ease;
+}
+.theme-toggle:hover { opacity: 1; }
+
+/* Icon sizing + show/hide per theme.
+   Dark mode (default): moon visible, sun hidden.
+   Light mode: sun visible, moon hidden. */
+.theme-toggle__icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.theme-toggle .t-sun  { display: none; }
+[data-theme="light"] .theme-toggle .t-sun  { display: block; }
+[data-theme="light"] .theme-toggle .t-moon { display: none; }
+
+.header-name {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.header-nav__link {
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  letter-spacing: 0.01em;
+  color: var(--color-text);
+  position: relative;
+  padding-bottom: 2px;
+}
+
+/* Underline sweeps left → right on hover / current page */
+.header-nav__link::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.header-nav__link:hover::after,
+.header-nav__link[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+.site-main {
+  margin-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
+  /* no page-fade-in — only the homepage uses transition animations */
+}
+
+
+/* ============================================
+   INNER PAGES — shared content area
+   ============================================ */
+.page-content {
+  padding: var(--gutter);
+}
+
+.page-title {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-4);
+}
+
+.copyright {
+  position: fixed;
+  bottom: var(--space-3);
+  right: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+
+/* ============================================
+   HOMEPAGE — 5 square thumbnails in a horizontal row
+   ============================================ */
+
+.home-wrap {
+  height: calc(100vh - var(--header-height));
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-5);
+  overflow: hidden;
+}
+
+/* 5 equal columns, no scroll */
+.home-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+/* Card wrapper — image + caption below */
+.home-strip__card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Square thumbnails */
+.home-strip__item {
+  aspect-ratio: 1;
+  overflow: hidden;
+  display: block;
+  background-color: var(--color-surface);
+}
+
+.home-strip__item img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: filter var(--dur-base) var(--ease);
+}
+
+.home-strip__card:hover .home-strip__item img {
+  filter: brightness(0.88) saturate(0.6);
+}
+
+/* Caption — sits below the image, outside the overflow mask */
+.home-strip__caption {
+  overflow: hidden;
+  height: 1.6em;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+/* Label — starts fully below the clip, rises up on hover */
+.home-strip__label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  transform: translateY(200%);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.home-strip__card:hover .home-strip__label {
+  transform: translateY(0);
+}
+
+
+/* ---- Image reveal on homepage arrival ----
+   Each image wipes in left→right using the site's main ease curve
+   so the motion matches the name animation on the intro.
+   Tight 60ms stagger: images appear one by one, left to right. */
+
+@keyframes image-wipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+.home-strip.from-intro .home-strip__card .home-strip__item {
+  animation: image-wipe 700ms var(--ease) both;
+}
+
+.home-strip.from-intro .home-strip__card:nth-child(1) .home-strip__item { animation-delay:   0ms; }
+.home-strip.from-intro .home-strip__card:nth-child(2) .home-strip__item { animation-delay:  60ms; }
+.home-strip.from-intro .home-strip__card:nth-child(3) .home-strip__item { animation-delay: 120ms; }
+.home-strip.from-intro .home-strip__card:nth-child(4) .home-strip__item { animation-delay: 180ms; }
+.home-strip.from-intro .home-strip__card:nth-child(5) .home-strip__item { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-strip.from-intro .home-strip__card .home-strip__item {
+    animation: none;
+    clip-path: none;
+  }
+}
+
+
+/* ============================================
+   PROJECT CARD GRID
+   Index pages: cover image + title below.
+   ============================================ */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+@media (max-width: 900px) {
+  .card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.project-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.project-card__thumb {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  margin-bottom: var(--space-2);
+}
+
+.project-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter var(--dur-base) var(--ease);
+}
+
+.project-card:hover .project-card__thumb img {
+  filter: brightness(0.88) saturate(0.6);
+}
+
+.project-card__info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.project-card__title {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.project-card__year {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+
+/* ============================================
+   PROJECT INDEX
+   ============================================ */
+.project-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-list__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.project-list__item:hover {
+  opacity: 0.55;
+}
+
+.project-list__title {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.project-list__year {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+
+/* ============================================
+   INDIVIDUAL PROJECT PAGE
+   Two-column: sticky sidebar left, 2-col gallery right.
+   ============================================ */
+
+/* Override page-content to become the two-column grid */
+.project-page {
+  display: grid;
+  grid-template-columns: 4fr 8fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.project-sidebar {
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-5));
+}
+
+.project-header {
+  margin-bottom: 0;
+}
+
+.project-header__eyebrow {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-2);
+}
+
+.project-header__title {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.project-header__meta {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  margin-top: var(--space-2);
+}
+
+.project-header__date {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+
+.project-header__body {
+  margin-top: var(--space-3);
+  font-size: var(--text-base);
+  line-height: 1.75;
+  color: var(--color-muted);
+  max-width: 58ch;
+}
+
+/* 2-column image grid */
+.project-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.project-gallery__cell {
+  background-color: var(--color-surface);
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.project-gallery__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter var(--dur-base) var(--ease);
+}
+
+.project-gallery__cell:hover img {
+  filter: brightness(0.88) saturate(0.6);
+}
+
+.project-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.project-nav__link {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.project-nav__link:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   PHOTOGRAPHS
+   ============================================ */
+.photographs-sequence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.photograph-item {
+  background-color: var(--color-surface);
+}
+
+.photograph-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+
+/* ============================================
+   ABOUT
+   Centered single-column: portrait → name → bio → contact
+   ============================================ */
+
+.about-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Passport-style portrait — 2:3 */
+.about-photo {
+  width: 140px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  margin-bottom: var(--space-5);
+}
+
+.about-photo img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.about-photo__placeholder {
+  width: 100%; height: 100%;
+  background: var(--color-surface);
+}
+
+/* Name */
+.about-name {
+  font-family: var(--font-ui);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+}
+
+/* Bio paragraphs */
+.about-bio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.about-bio p {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  line-height: 1.8;
+  color: var(--color-text);
+}
+
+/* Contact block */
+.about-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  width: 100%;
+}
+
+.about-contact__row {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.about-contact a {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.about-contact a:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   CONTACT
+   ============================================ */
+.contact-email {
+  font-size: var(--text-lg);
+  display: inline-block;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.contact-email:hover {
+  color: var(--color-muted);
+}
+
+.contact-socials {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.contact-socials a {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.contact-socials a:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   SKETCHBOOK (notes index)
+   Early ideas, experiments, spontaneous photography.
+   Layout: square thumbnail left + text right, dividers between entries.
+   ============================================ */
+
+/* Sparse concept lede */
+.sketchbook-lede {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-5);
+  max-width: 44ch;
+}
+
+/* Entry list — divider on first child too via :before */
+.sketchbook-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+}
+
+.sketchbook-entry {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-4) 0;
+  transition: opacity var(--dur-fast) ease;
+}
+
+.sketchbook-entry:hover { opacity: 0.6; }
+
+/* Two-column: image left, text right */
+.sketchbook-entry__inner {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* Square thumbnail */
+.sketchbook-entry__image {
+  width: 140px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sketchbook-entry__image img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sketchbook-entry__placeholder {
+  width: 100%; height: 100%;
+  background: var(--color-surface);
+}
+
+/* Text column */
+.sketchbook-entry__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 140px;  /* match image height */
+}
+
+.sketchbook-entry__date {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-1);
+}
+
+.sketchbook-entry__title {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.sketchbook-entry__excerpt {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--color-muted);
+  max-width: 52ch;
+  margin-bottom: var(--space-2);
+}
+
+.sketchbook-entry__read {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.sketchbook-entry:hover .sketchbook-entry__read {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (max-width: 600px) {
+  .sketchbook-entry__inner {
+    grid-template-columns: 100px 1fr;
+    gap: var(--space-3);
+  }
+  .sketchbook-entry__image { width: 100px; }
+  .sketchbook-entry__body  { min-height: 100px; }
+}
+
+.note-meta {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-3);
+}
+
+.note-body {
+  font-size: var(--text-md);
+  line-height: 1.8;
+  max-width: 56ch;
+}
+
+.note-body p + p {
+  margin-top: var(--space-3);
+}
+
+.note-back {
+  display: inline-block;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.note-back:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   INTRO PAGE
+   ============================================ */
+.intro-page {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: #111;
+}
+
+/* Background — blurred gradient placeholder.
+   To use a real photograph:
+   1. Add intro-bg.jpg to /public/images/
+   2. Replace the background + filter below with:
+      background-image: url('/images/intro-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      filter: blur(32px); */
+.intro-bg {
+  position: absolute;
+  inset: -6%;
+  background:
+    radial-gradient(ellipse 55% 65% at 24% 52%, rgba(188, 188, 188, 0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 50% at 67% 40%, rgba(160, 160, 160, 0.40) 0%, transparent 60%),
+    radial-gradient(ellipse 65% 75% at 50% 70%, rgba(210, 210, 210, 0.30) 0%, transparent 65%),
+    #2a2a2a;
+  filter: blur(30px);
+}
+
+/* Name — two words revealed by sliding up through a hidden overflow mask */
+.intro-name {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: var(--space-4);
+}
+
+.intro-name__line {
+  /* This is the mask. overflow:hidden + translateY creates the reveal. */
+  overflow: hidden;
+  padding-bottom: 0.06em; /* keep descenders from clipping */
+}
+
+.intro-name__word {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: clamp(2.8rem, 6.5vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  color: rgba(255, 255, 255, 0.90);
+  text-transform: uppercase;
+  /* Animation declared via keyframe name defined in the ANIMATION SYSTEM section */
+  animation: word-rise var(--dur-slow) var(--ease) both;
+}
+
+/* Statement — fades in quietly after the name has settled */
+.intro-statement {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.62);
+  text-align: center;
+  max-width: 44ch;
+  line-height: 1.65;
+  padding-inline: var(--space-4);
+  animation: quiet-in var(--dur-base) var(--ease) both;
+}
+
+/* Enter cue — appears last, sits at the bottom */
+.intro-enter {
+  position: absolute;
+  z-index: 1;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  text-decoration: none;
+  animation: quiet-in var(--dur-base) var(--ease) both;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.intro-enter:hover {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* The breathing line — only looping animation on the site.
+   Tells the viewer this is interactive without being loud. */
+.intro-enter__line {
+  display: block;
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.25);
+  transform-origin: top center;
+  animation: line-breathe 2.6s ease-in-out infinite;
+}
+
+
+/* ============================================
+   ANIMATION SYSTEM
+   Five animation types. Each has a single stated purpose.
+   Nothing animates without a reason.
+   ============================================ */
+
+
+/* --------------------------------------------------
+   1. INTRO SEQUENCE
+   Purpose: signal intentionality before the viewer
+   sees any work. Sets the register for the whole site.
+   Fires once on load. Never repeats.
+   -------------------------------------------------- */
+
+/* Name IN: text emerges upward from behind a hidden overflow mask.
+   Like a photograph developing. */
+@keyframes word-rise {
+  from { transform: translateY(108%); }
+  to   { transform: translateY(0); }
+}
+
+/* Name EXIT: falls back down with gravity (ease-in = accelerating).
+   Brutalist — decisive, not decorative. Applied via JS on click. */
+@keyframes word-fall {
+  from { transform: translateY(0); }
+  to   { transform: translateY(112%); }
+}
+
+/* Statement/enter IN: quiet fade after the name has settled */
+@keyframes quiet-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Statement EXIT: fades out and lifts slightly */
+@keyframes quiet-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
+}
+
+/* Pulsing line on the enter cue — the only looping animation.
+   Tells the viewer this is interactive without being loud. */
+@keyframes line-breathe {
+  0%, 100% { opacity: 0.25; transform: scaleY(1); }
+  50%       { opacity: 0.55; transform: scaleY(1.12); }
+}
+
+
+/* --------------------------------------------------
+   2. PAGE CONTENT ARRIVAL
+   Purpose: content arrives, it doesn't snap. Used on
+   inner page headings and first visible elements only.
+   -------------------------------------------------- */
+
+.page-arrive {
+  animation: arrive var(--dur-reveal) var(--ease-reveal) both;
+}
+
+@keyframes arrive {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+
+/* --------------------------------------------------
+   3. PAGE TRANSITION
+   Fade in on arrival (CSS). Fade out on departure (JS).
+   Keyframe front-loads the opacity: full at 40%, holds.
+   -------------------------------------------------- */
+
+@keyframes page-fade-in {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+
+/* --------------------------------------------------
+   4. SCROLL REVEAL
+   Purpose: pacing. Content appears at the rhythm
+   you're reading, not all at once. One direction only.
+   -------------------------------------------------- */
+
+.reveal {
+  opacity: 0;
+  transition: opacity var(--dur-reveal) var(--ease-reveal);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+}
+
+/* Staggered: for lists where items share a threshold */
+.reveal-stagger > * {
+  opacity: 0;
+  transition: opacity var(--dur-reveal) var(--ease-reveal);
+}
+
+.reveal-stagger.is-visible > *:nth-child(1) { transition-delay:   0ms; }
+.reveal-stagger.is-visible > *:nth-child(2) { transition-delay:  60ms; }
+.reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 120ms; }
+.reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 180ms; }
+.reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 240ms; }
+.reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 300ms; }
+
+.reveal-stagger.is-visible > * {
+  opacity: 1;
+}
+
+
+/* --------------------------------------------------
+   5. HOVER FEEDBACK
+   Purpose: confirms what is clickable.
+   Color shift on nav links, dim on image links.
+   No movement. Defined where the elements are used
+   (see sidebar, project-list, home-strip sections above).
+   -------------------------------------------------- */
+
+
+/* ============================================
+   LIGHTBOX  — unified dark style
+   Used by: home.astro (thumbnail grid) + projects/[slug].astro
+   Lives in a portal slot so z-index 300 clears the header (100).
+   ============================================ */
+.s-lb {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+.s-lb.is-open { opacity: 1; pointer-events: all; }
+
+.s-lb__wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 82vw;
+  max-height: 86vh;
+}
+.s-lb__wrap img {
+  max-width: 82vw;
+  max-height: 86vh;
+  width: auto; height: auto;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+}
+
+/* Close button — top-right, below nav */
+.s-lb__close {
+  position: absolute;
+  top: calc(var(--header-height, 60px) + 1rem);
+  right: 4rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-ui);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  transition: color 180ms ease;
+}
+.s-lb__close:hover { color: rgba(255, 255, 255, 0.95); }
+
+/* Prev / Next arrows */
+.s-lb__prev,
+.s-lb__next {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 1.5rem;
+  cursor: pointer;
+  background: none; border: none;
+  padding: 2rem 2.5rem;
+  transition: color 180ms ease;
+}
+.s-lb__prev:hover,
+.s-lb__next:hover { color: rgba(255, 255, 255, 0.95); }
+.s-lb__prev { left: 0; }
+.s-lb__next { right: 0; }
+
+/* Light-variant lightbox — only activates in light theme.
+   In dark theme (default) it behaves identically to the regular dark lightbox. */
+[data-theme="light"] .s-lb--light {
+  background: rgba(255, 255, 255, 0.97);
+}
+[data-theme="light"] .s-lb--light .s-lb__close {
+  color: rgba(0, 0, 0, 0.4);
+}
+[data-theme="light"] .s-lb--light .s-lb__close:hover {
+  color: rgba(0, 0, 0, 0.9);
+}
+[data-theme="light"] .s-lb--light .s-lb__prev,
+[data-theme="light"] .s-lb--light .s-lb__next {
+  color: rgba(0, 0, 0, 0.3);
+}
+[data-theme="light"] .s-lb--light .s-lb__prev:hover,
+[data-theme="light"] .s-lb--light .s-lb__next:hover {
+  color: rgba(0, 0, 0, 0.85);
+}
+
+/* Project context — bottom-left, minimal */
+.s-lb__info {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 3rem;
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+  pointer-events: none;
+}
+.s-lb__info-link {
+  color: rgba(255, 255, 255, 0.65);
+  text-decoration: none;
+  pointer-events: all;
+  transition: color 180ms ease;
+}
+.s-lb__info-link:hover { color: rgba(255, 255, 255, 0.95); }
+
+
+/* --------------------------------------------------
+   REDUCED MOTION
+   All animation types collapse to instant or none.
+   -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .page-arrive,
+  .reveal,
+  .reveal-stagger > *,
+  .site-main {
+    animation: none;
+    opacity: 1;
+    transition: none;
+  }
+  .page-curtain {
+    display: none !important;
+  }
+}
+
+
+/* ============================================
+   PAGE TRANSITION CURTAIN
+   Fixed overlay, hidden by default (opacity: 0).
+   On exit: JS fades it in (opacity 0 → 1) then navigates.
+   On entry: JS sets opacity 1 then fades out (opacity 1 → 0).
+   Same timing/easing as hamburger overlay for a unified dark↔light feel.
+   z-index 150 = above content, below header (200) and lightbox (300).
+   ============================================ */
+.page-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: #0a0a0a;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+
+/* ============================================
+   MOBILE NAVIGATION — hamburger + overlay
+   ============================================ */
+
+/* Hamburger toggle — hidden on desktop */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nav-toggle span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: #ffffff;       /* inverts via mix-blend-mode: difference */
+  transition: transform 180ms cubic-bezier(0.25,0,0,1), opacity 130ms ease;
+  transform-origin: center;
+}
+
+/* Open state — bars form an X */
+.nav-toggle[aria-expanded="true"] span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.nav-toggle[aria-expanded="true"] span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+/* Mobile overlay — full-screen, dark */
+.nav-mobile {
+  position: fixed;
+  inset: 0;
+  z-index: 190;   /* below header (200), above content */
+  background: #0a0a0a;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--header-height) 2rem 3rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.nav-mobile[aria-hidden="false"] {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.nav-mobile__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.nav-mobile__links a {
+  font-family: var(--font-ui);
+  font-size: clamp(2.25rem, 9vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-decoration: none;
+  line-height: 1;
+  transition: opacity 150ms ease;
+}
+.nav-mobile__links a:hover { opacity: 0.45; }
+
+/* Prevent body scroll while mobile nav is open */
+body.nav-is-open { overflow: hidden; }
+
+
+/* ============================================
+   RESPONSIVE — tablet (≤ 1024px)
+   ============================================ */
+@media (max-width: 1024px) {
+  :root { --gutter: 2.5rem; }
+
+  /* Project detail: tighten column gap */
+  .project-page {
+    gap: var(--space-5);
+  }
+}
+
+
+/* ============================================
+   RESPONSIVE — mobile (≤ 768px)
+   ============================================ */
+@media (max-width: 768px) {
+  :root {
+    --header-height: 56px;
+    --gutter: 1.5rem;
+  }
+
+  /* Show hamburger, hide desktop nav and theme toggle */
+  .header-nav    { display: none; }
+  .nav-toggle    { display: flex; }
+  .theme-toggle  { display: none; }
+
+  /* Card grids: single column */
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  /* Project detail: stack vertically */
+  .project-page {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+  .project-sidebar {
+    position: static;
+  }
+
+  /* Project gallery: 1 column on mobile */
+  .project-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sketchbook entries: narrower image */
+  .sketchbook-entry__inner {
+    grid-template-columns: 100px 1fr;
+    gap: var(--space-3);
+  }
+  .sketchbook-entry__image { width: 100px; }
+  .sketchbook-entry__body  { min-height: 100px; }
+
+  /* About: narrower portrait */
+  .about-photo { width: 110px; }
+  .about-name  { font-size: var(--text-lg); }
+
+  /* Lightbox arrows: smaller on mobile */
+  .s-lb__prev,
+  .s-lb__next {
+    font-size: 1.1rem;
+    padding: 1.5rem 1.25rem;
+  }
+
+}

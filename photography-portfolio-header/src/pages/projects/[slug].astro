@@ -1,0 +1,149 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const all = await getCollection('projects');
+  const sorted = all.sort((a, b) => {
+    if (a.data.section !== b.data.section) {
+      return a.data.section === 'projects' ? -1 : 1;
+    }
+    return a.data.order - b.data.order;
+  });
+
+  return sorted.map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { data } = project;
+---
+
+<BaseLayout
+  title={data.title}
+  description={data.description ?? `${data.title} — Dimitar Slavchev`}
+  accent={data.accent}
+  activeSection={data.section}
+>
+  <div class="page-content project-page">
+
+    <!-- Sticky sidebar: title, meta, description -->
+    <aside class="project-sidebar page-arrive">
+      <header class="project-header">
+        <h1 class="project-header__title">{data.title}</h1>
+        {(data.date || data.year) && (
+          <div class="project-header__meta">
+            <span class="project-header__date">{data.date ?? data.year}</span>
+          </div>
+        )}
+        {data.description && (
+          <p class="project-header__body">{data.description}</p>
+        )}
+      </header>
+    </aside>
+
+    <!-- Gallery: 2 columns, scrollable -->
+    <div class="project-gallery" id="project-gallery">
+      {data.images.map((src, i) => (
+        <div
+          class="project-gallery__cell reveal"
+          data-index={i}
+          role="button"
+          tabindex="0"
+          aria-label={`Open image ${i + 1}`}
+          style={`--reveal-delay: ${(i % 2) * 60}ms`}
+        >
+          <img
+            src={src.startsWith('http') ? src : `/images/${src}`}
+            alt={data.alts?.[i] ?? ''}
+            loading={i < 2 ? 'eager' : 'lazy'}
+          />
+        </div>
+      ))}
+    </div>
+
+  </div>
+
+  <!-- Lightbox — portal slot so it sits in root stacking context above header -->
+  <div slot="portal" id="proj-lb" class="s-lb s-lb--light" aria-hidden="true" role="dialog" aria-modal="true">
+    <button class="s-lb__close" id="proj-lb-close" aria-label="Close">Close</button>
+    <button class="s-lb__prev"  id="proj-lb-prev"  aria-label="Previous">&#8592;</button>
+    <button class="s-lb__next"  id="proj-lb-next"  aria-label="Next">&#8594;</button>
+    <div class="s-lb__wrap">
+      <img id="proj-lb-img" src="" alt="" />
+    </div>
+  </div>
+
+</BaseLayout>
+
+<script>
+  function initLightbox() {
+    var gallery  = document.getElementById('project-gallery');
+    var lb       = document.getElementById('proj-lb');
+    var lbImg    = document.getElementById('proj-lb-img');
+    var lbClose  = document.getElementById('proj-lb-close');
+    var lbPrev   = document.getElementById('proj-lb-prev');
+    var lbNext   = document.getElementById('proj-lb-next');
+
+    if (!gallery || !lb || !lbImg) return;
+
+    var cells  = Array.from(gallery.querySelectorAll('.project-gallery__cell'));
+    var images = cells.map(function(c) {
+      var el = c.querySelector('img');
+      return { src: el ? el.src : '', alt: el ? el.alt : '' };
+    }).filter(function(d) { return d.src; });
+
+    var current = 0;
+
+    function lbOpen(idx) {
+      current = ((idx % images.length) + images.length) % images.length;
+      lbImg.src = images[current].src;
+      lbImg.alt = images[current].alt;
+      lb.classList.add('is-open');
+      lb.removeAttribute('aria-hidden');
+    }
+
+    function lbDismiss() {
+      lb.classList.remove('is-open');
+      lb.setAttribute('aria-hidden', 'true');
+      setTimeout(function() { lbImg.src = ''; }, 320);
+    }
+
+    function lbGoto(idx) {
+      current = ((idx % images.length) + images.length) % images.length;
+      lbImg.style.transition = 'opacity 120ms ease-in';
+      lbImg.style.opacity    = '0';
+      setTimeout(function() {
+        lbImg.src = images[current].src;
+        lbImg.alt = images[current].alt;
+        lbImg.style.transition = 'opacity 180ms ease-out';
+        lbImg.style.opacity    = '1';
+      }, 130);
+    }
+
+    // Cell clicks
+    cells.forEach(function(cell, i) {
+      cell.addEventListener('click', function() { lbOpen(i); });
+      cell.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') lbOpen(i);
+      });
+    });
+
+    lbClose.addEventListener('click', lbDismiss);
+    lbPrev.addEventListener('click', function() { lbGoto(current - 1); });
+    lbNext.addEventListener('click', function() { lbGoto(current + 1); });
+    lb.addEventListener('click', function(e) { if (e.target === lb) lbDismiss(); });
+
+    document.addEventListener('keydown', function(e) {
+      if (!lb.classList.contains('is-open')) return;
+      if (e.key === 'Escape')     lbDismiss();
+      if (e.key === 'ArrowRight') lbGoto(current + 1);
+      if (e.key === 'ArrowLeft')  lbGoto(current - 1);
+    });
+  }
+
+  initLightbox();
+  document.addEventListener('astro:page-load', initLightbox);
+</script>

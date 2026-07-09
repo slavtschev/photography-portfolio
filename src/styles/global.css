@@ -1,0 +1,1125 @@
+/* ============================================
+   FONT
+   Drop your font files in /public/fonts/ and
+   uncomment + update this block.
+   ============================================ */
+
+/* @font-face {
+  font-family: 'SiteFont';
+  src: url('/fonts/SiteFont-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SiteFont';
+  src: url('/fonts/SiteFont-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SiteFont';
+  src: url('/fonts/SiteFont-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+} */
+
+
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+:root {
+  /* Color — monochrome */
+  --color-bg:       #ffffff;
+  --color-text:     #0a0a0a;
+  --color-muted:    #999999;
+  --color-border:   #e8e8e8;
+  --color-surface:  #f2f2f2;
+
+  /* Per-project accent — default matches text, overridden per project */
+  --color-accent: var(--color-text);
+
+  /* Typography */
+  --font-primary: 'SiteFont', Georgia, 'Times New Roman', serif;
+  --font-ui:      system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Type scale */
+  --text-xs:   0.6875rem;  /* 11px */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 1rem;       /* 16px */
+  --text-md:   1.125rem;   /* 18px */
+  --text-lg:   1.375rem;   /* 22px */
+  --text-xl:   1.75rem;    /* 28px */
+  --text-2xl:  2.25rem;    /* 36px */
+
+  /* Spacing */
+  --space-1:  0.375rem;  /*  6px */
+  --space-2:  0.75rem;   /* 12px */
+  --space-3:  1.25rem;   /* 20px */
+  --space-4:  2rem;      /* 32px */
+  --space-5:  3rem;      /* 48px */
+  --space-6:  4.5rem;    /* 72px */
+  --space-7:  7rem;      /* 112px */
+
+  /* Layout */
+  --sidebar-width: 190px;
+  --page-pad: 2rem;
+
+  /* Animation */
+  --ease:           cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-reveal:    cubic-bezier(0.87, 0, 0.13, 1); /* slow-fast-slow: content materialises */
+  --dur-fast:       240ms;
+  --dur-base:       520ms;
+  --dur-slow:       820ms;
+  --dur-reveal:     700ms;   /* longer for the materialise effect */
+}
+
+
+/* ============================================
+   RESET
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+img, video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+}
+
+
+/* ============================================
+   SIDEBAR LAYOUT
+   Used on all pages except the intro.
+   ============================================ */
+.site-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-3) var(--space-3);
+  background: var(--color-bg);
+  z-index: 100;
+  /* No border — the content edge defines the boundary */
+}
+
+.site-main {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  animation: page-fade-in 560ms ease-out both;
+}
+
+/* Name */
+.sidebar-name {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin-bottom: var(--space-5);
+}
+
+/* Nav area */
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sidebar-nav__top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: var(--space-3);
+}
+
+.sidebar-nav__link {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  transition: color var(--dur-fast) var(--ease);
+  line-height: 1.8;
+}
+
+.sidebar-nav__link:hover,
+.sidebar-nav__link[aria-current="page"] {
+  color: var(--color-muted);
+}
+
+/* Section headers (PROJECTS →, PLAYGROUND →) */
+.sidebar-nav__section {
+  margin-top: var(--space-2);
+}
+
+.sidebar-nav__section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  line-height: 1.8;
+}
+
+.sidebar-nav__section-title .arrow {
+  font-size: 0.65em;
+  display: inline-block;
+  transform: rotate(-45deg);
+  line-height: 1;
+}
+
+.sidebar-nav__sub-items {
+  display: flex;
+  flex-direction: column;
+  padding-left: 0.6rem;
+}
+
+.sidebar-nav__sub-link {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  transition: color var(--dur-fast) var(--ease);
+  line-height: 1.9;
+}
+
+.sidebar-nav__sub-link:hover {
+  color: var(--color-muted);
+}
+
+.sidebar-nav__sub-link[aria-current="page"] {
+  color: var(--color-muted);
+}
+
+/* Contact block — pushed to bottom */
+.sidebar-contact {
+  padding-top: var(--space-3);
+}
+
+.sidebar-contact__label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.sidebar-contact__line {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  color: var(--color-muted);
+  line-height: 1.7;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.sidebar-contact__line:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   INNER PAGES — shared content area
+   ============================================ */
+.page-content {
+  padding: var(--space-4) var(--space-5) var(--space-7);
+}
+
+.page-title {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-4);
+}
+
+.copyright {
+  position: fixed;
+  bottom: var(--space-3);
+  right: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+
+/* ============================================
+   HOMEPAGE — 5 square thumbnails in a horizontal row
+   ============================================ */
+
+.home-wrap {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-4);
+  overflow: hidden;
+}
+
+/* 5 equal columns, no scroll */
+.home-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+/* Card wrapper — image + caption below */
+.home-strip__card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Square thumbnails */
+.home-strip__item {
+  aspect-ratio: 1;
+  overflow: hidden;
+  display: block;
+  background-color: var(--color-surface);
+}
+
+.home-strip__item img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: filter var(--dur-base) var(--ease);
+}
+
+.home-strip__card:hover .home-strip__item img {
+  filter: brightness(0.88) saturate(0.6);
+}
+
+/* Caption — sits below the image, outside the overflow mask */
+.home-strip__caption {
+  overflow: hidden;
+  height: 1.6em;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+/* Label — starts fully below the clip, rises up on hover */
+.home-strip__label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  transform: translateY(200%);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.home-strip__card:hover .home-strip__label {
+  transform: translateY(0);
+}
+
+
+/* ---- Image reveal on homepage arrival ----
+   Each image wipes in left→right using the site's main ease curve
+   so the motion matches the name animation on the intro.
+   Tight 60ms stagger: images appear one by one, left to right. */
+
+@keyframes image-wipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+.home-strip.from-intro .home-strip__card .home-strip__item {
+  animation: image-wipe 700ms var(--ease) both;
+}
+
+.home-strip.from-intro .home-strip__card:nth-child(1) .home-strip__item { animation-delay:   0ms; }
+.home-strip.from-intro .home-strip__card:nth-child(2) .home-strip__item { animation-delay:  60ms; }
+.home-strip.from-intro .home-strip__card:nth-child(3) .home-strip__item { animation-delay: 120ms; }
+.home-strip.from-intro .home-strip__card:nth-child(4) .home-strip__item { animation-delay: 180ms; }
+.home-strip.from-intro .home-strip__card:nth-child(5) .home-strip__item { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-strip.from-intro .home-strip__card .home-strip__item {
+    animation: none;
+    clip-path: none;
+  }
+}
+
+
+/* ============================================
+   PROJECT INDEX
+   ============================================ */
+.project-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-list__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.project-list__item:hover {
+  opacity: 0.55;
+}
+
+.project-list__title {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.project-list__year {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+
+/* ============================================
+   INDIVIDUAL PROJECT PAGE
+   ============================================ */
+.project-header {
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+}
+
+.project-header__eyebrow {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-2);
+}
+
+.project-header__title {
+  font-family: var(--font-primary);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+
+.project-header__meta {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  margin-top: var(--space-2);
+}
+
+.project-header__date {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+
+.project-header__body {
+  margin-top: var(--space-3);
+  font-size: var(--text-base);
+  line-height: 1.75;
+  color: var(--color-muted);
+  max-width: 58ch;
+}
+
+/* 3-column image grid */
+.project-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+@media (max-width: 700px) {
+  .project-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.project-gallery__cell {
+  background-color: var(--color-surface);
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.project-gallery__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter var(--dur-base) var(--ease);
+}
+
+.project-gallery__cell:hover img {
+  filter: brightness(0.88) saturate(0.6);
+}
+
+.project-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.project-nav__link {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.project-nav__link:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   PHOTOGRAPHS
+   ============================================ */
+.photographs-sequence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.photograph-item {
+  background-color: var(--color-surface);
+}
+
+.photograph-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+
+/* ============================================
+   ABOUT
+   ============================================ */
+
+/* Two-column: text left, portrait right */
+.about-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .about-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.about-text p {
+  font-size: var(--text-md);
+  line-height: 1.75;
+  max-width: 50ch;
+  color: var(--color-text);
+}
+
+.about-text p + p {
+  margin-top: var(--space-3);
+}
+
+/* Portrait — 2:3 ratio, right column */
+.about-portrait {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background-color: var(--color-surface);
+  overflow: hidden;
+  position: sticky;
+  top: var(--space-4);
+}
+
+.about-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.about-influences {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+}
+
+.about-influences p {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: 1.75;
+  max-width: 56ch;
+}
+
+
+/* ============================================
+   CONTACT
+   ============================================ */
+.contact-email {
+  font-size: var(--text-lg);
+  display: inline-block;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.contact-email:hover {
+  color: var(--color-muted);
+}
+
+.contact-socials {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.contact-socials a {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.contact-socials a:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   NOTES / BLOG
+   ============================================ */
+
+/* Index — blog-style post list */
+.blog-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 80ch;
+  padding-top: var(--space-3);
+}
+
+.blog-entry {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.blog-entry__date {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-1);
+}
+
+.blog-entry__title {
+  font-family: var(--font-primary);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.blog-entry:hover .blog-entry__title {
+  color: var(--color-muted);
+}
+
+.blog-entry__excerpt {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-style: italic;
+  line-height: 1.7;
+  color: var(--color-muted);
+  max-width: 52ch;
+  margin-bottom: var(--space-2);
+}
+
+.blog-entry__read {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.blog-entry:hover .blog-entry__read {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.note-meta {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: var(--space-3);
+}
+
+.note-body {
+  font-size: var(--text-md);
+  line-height: 1.8;
+  max-width: 56ch;
+}
+
+.note-body p + p {
+  margin-top: var(--space-3);
+}
+
+.note-back {
+  display: inline-block;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.note-back:hover {
+  color: var(--color-text);
+}
+
+
+/* ============================================
+   INTRO PAGE
+   ============================================ */
+.intro-page {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: #111;
+}
+
+/* Background — blurred gradient placeholder.
+   To use a real photograph:
+   1. Add intro-bg.jpg to /public/images/
+   2. Replace the background + filter below with:
+      background-image: url('/images/intro-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      filter: blur(32px); */
+.intro-bg {
+  position: absolute;
+  inset: -6%;
+  background:
+    radial-gradient(ellipse 55% 65% at 24% 52%, rgba(188, 188, 188, 0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 50% at 67% 40%, rgba(160, 160, 160, 0.40) 0%, transparent 60%),
+    radial-gradient(ellipse 65% 75% at 50% 70%, rgba(210, 210, 210, 0.30) 0%, transparent 65%),
+    #2a2a2a;
+  filter: blur(30px);
+}
+
+/* Name — two words revealed by sliding up through a hidden overflow mask */
+.intro-name {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: var(--space-4);
+}
+
+.intro-name__line {
+  /* This is the mask. overflow:hidden + translateY creates the reveal. */
+  overflow: hidden;
+  padding-bottom: 0.06em; /* keep descenders from clipping */
+}
+
+.intro-name__word {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: clamp(2.8rem, 6.5vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  color: rgba(255, 255, 255, 0.90);
+  text-transform: uppercase;
+  /* Animation declared via keyframe name defined in the ANIMATION SYSTEM section */
+  animation: word-rise var(--dur-slow) var(--ease) both;
+}
+
+/* Statement — fades in quietly after the name has settled */
+.intro-statement {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.62);
+  text-align: center;
+  max-width: 44ch;
+  line-height: 1.65;
+  padding-inline: var(--space-4);
+  animation: quiet-in var(--dur-base) var(--ease) both;
+}
+
+/* Enter cue — appears last, sits at the bottom */
+.intro-enter {
+  position: absolute;
+  z-index: 1;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  text-decoration: none;
+  animation: quiet-in var(--dur-base) var(--ease) both;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.intro-enter:hover {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* The breathing line — only looping animation on the site.
+   Tells the viewer this is interactive without being loud. */
+.intro-enter__line {
+  display: block;
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.25);
+  transform-origin: top center;
+  animation: line-breathe 2.6s ease-in-out infinite;
+}
+
+
+/* ============================================
+   ANIMATION SYSTEM
+   Five animation types. Each has a single stated purpose.
+   Nothing animates without a reason.
+   ============================================ */
+
+
+/* --------------------------------------------------
+   1. INTRO SEQUENCE
+   Purpose: signal intentionality before the viewer
+   sees any work. Sets the register for the whole site.
+   Fires once on load. Never repeats.
+   -------------------------------------------------- */
+
+/* Name IN: text emerges upward from behind a hidden overflow mask.
+   Like a photograph developing. */
+@keyframes word-rise {
+  from { transform: translateY(108%); }
+  to   { transform: translateY(0); }
+}
+
+/* Name EXIT: falls back down with gravity (ease-in = accelerating).
+   Brutalist — decisive, not decorative. Applied via JS on click. */
+@keyframes word-fall {
+  from { transform: translateY(0); }
+  to   { transform: translateY(112%); }
+}
+
+/* Statement/enter IN: quiet fade after the name has settled */
+@keyframes quiet-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Statement EXIT: fades out and lifts slightly */
+@keyframes quiet-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
+}
+
+/* Pulsing line on the enter cue — the only looping animation.
+   Tells the viewer this is interactive without being loud. */
+@keyframes line-breathe {
+  0%, 100% { opacity: 0.25; transform: scaleY(1); }
+  50%       { opacity: 0.55; transform: scaleY(1.12); }
+}
+
+
+/* --------------------------------------------------
+   2. PAGE CONTENT ARRIVAL
+   Purpose: content arrives, it doesn't snap. Used on
+   inner page headings and first visible elements only.
+   -------------------------------------------------- */
+
+.page-arrive {
+  animation: arrive var(--dur-reveal) var(--ease-reveal) both;
+}
+
+@keyframes arrive {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+
+/* --------------------------------------------------
+   3. PAGE TRANSITION
+   Fade in on arrival (CSS). Fade out on departure (JS).
+   Keyframe front-loads the opacity: full at 40%, holds.
+   -------------------------------------------------- */
+
+@keyframes page-fade-in {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+
+/* --------------------------------------------------
+   4. SCROLL REVEAL
+   Purpose: pacing. Content appears at the rhythm
+   you're reading, not all at once. One direction only.
+   -------------------------------------------------- */
+
+.reveal {
+  opacity: 0;
+  transition: opacity var(--dur-reveal) var(--ease-reveal);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+}
+
+/* Staggered: for lists where items share a threshold */
+.reveal-stagger > * {
+  opacity: 0;
+  transition: opacity var(--dur-reveal) var(--ease-reveal);
+}
+
+.reveal-stagger.is-visible > *:nth-child(1) { transition-delay:   0ms; }
+.reveal-stagger.is-visible > *:nth-child(2) { transition-delay:  60ms; }
+.reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 120ms; }
+.reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 180ms; }
+.reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 240ms; }
+.reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 300ms; }
+
+.reveal-stagger.is-visible > * {
+  opacity: 1;
+}
+
+
+/* --------------------------------------------------
+   5. HOVER FEEDBACK
+   Purpose: confirms what is clickable.
+   Color shift on nav links, dim on image links.
+   No movement. Defined where the elements are used
+   (see sidebar, project-list, home-strip sections above).
+   -------------------------------------------------- */
+
+
+/* ============================================
+   LIGHTBOX
+   ============================================ */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 480ms var(--ease);
+}
+
+.lightbox.is-open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.lightbox__wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 82vw;
+  max-height: 84vh;
+  transform: translateY(36px);
+  opacity: 0;
+  transition:
+    transform 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 680ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lightbox.wrap-in .lightbox__wrap {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.lightbox__wrap img {
+  max-width: 82vw;
+  max-height: 84vh;
+  width: auto;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lightbox.img-in .lightbox__wrap img {
+  clip-path: inset(0 0% 0 0);
+}
+
+/* Controls */
+.lightbox__close {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: var(--space-1);
+  transition: color var(--dur-fast) ease;
+  line-height: 1;
+}
+
+.lightbox__close:hover { color: rgba(0, 0, 0, 0.85); }
+
+.lightbox__prev,
+.lightbox__next {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  letter-spacing: 0.05em;
+  color: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: var(--space-4) var(--space-3);
+  transition: color var(--dur-fast) ease;
+}
+
+.lightbox__prev { left: 0; }
+.lightbox__next { right: 0; }
+
+.lightbox__prev:hover,
+.lightbox__next:hover { color: rgba(0, 0, 0, 0.8); }
+
+.lightbox__counter {
+  position: fixed;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+
+/* --------------------------------------------------
+   REDUCED MOTION
+   All animation types collapse to instant or none.
+   -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .page-arrive,
+  .reveal,
+  .reveal-stagger > *,
+  .site-main {
+    animation: none;
+    opacity: 1;
+    transition: none;
+  }
+}

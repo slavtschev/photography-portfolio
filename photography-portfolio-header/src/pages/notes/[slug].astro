@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const notes = await getCollection('notes');
+  return notes.map(note => ({ params: { slug: note.slug }, props: { note } }));
+}
+
+const { note } = Astro.props;
+const { Content } = await note.render();
+
+function formatDate(d: Date) {
+  return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+---
+
+<BaseLayout
+  title={note.data.title}
+  description={`${note.data.title} — Dimitar Slavchev`}
+>
+  <div class="page-content">
+    <div class="page-arrive">
+      <p class="note-meta">{formatDate(note.data.date)}</p>
+      <h1 style="font-size: var(--text-xl); font-weight: 400; margin-top: var(--space-1)">
+        {note.data.title}
+      </h1>
+    </div>
+
+    <div class="note-body reveal" style="margin-top: var(--space-4)">
+      <Content />
+    </div>
+
+    <a href="/notes" class="note-back reveal">← Sketchbook</a>
+  </div>
+</BaseLayout>

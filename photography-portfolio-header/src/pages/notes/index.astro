@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const notes = await getCollection('notes');
+const sorted = notes.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+function formatDate(d: Date) {
+  return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'long' });
+}
+---
+
+<BaseLayout
+  title="Sketchbook"
+  description="Early ideas, experiments, and spontaneous photography — Dimitar Slavchev."
+>
+  <div class="page-content">
+
+    <!-- Sparse description of the concept -->
+    <p class="sketchbook-lede reveal">
+      Early ideas. Experiments. Photographs made on instinct, not plan.
+    </p>
+
+    <div class="sketchbook-list">
+      {sorted.map((note, i) => (
+        <a
+          href={`/notes/${note.slug}`}
+          class="sketchbook-entry reveal"
+          style={`--reveal-delay: ${i * 55}ms`}
+        >
+          <div class="sketchbook-entry__inner">
+
+            <!-- Square thumbnail or placeholder -->
+            <div class="sketchbook-entry__image">
+              {note.data.image
+                ? <img src={note.data.image} alt={note.data.title} loading="lazy" />
+                : <div class="sketchbook-entry__placeholder"></div>
+              }
+            </div>
+
+            <!-- Text -->
+            <div class="sketchbook-entry__body">
+              <span class="sketchbook-entry__date">{formatDate(note.data.date)}</span>
+              <h2 class="sketchbook-entry__title">{note.data.title}</h2>
+              {note.data.excerpt && (
+                <p class="sketchbook-entry__excerpt">{note.data.excerpt}</p>
+              )}
+              <span class="sketchbook-entry__read">Read →</span>
+            </div>
+
+          </div>
+        </a>
+      ))}
+    </div>
+
+  </div>
+</BaseLayout>

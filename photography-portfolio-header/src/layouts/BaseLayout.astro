@@ -1,0 +1,135 @@
+---
+import Header from '../components/Header.astro';
+import RevealObserver from '../components/RevealObserver.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  accent?: string;
+  activeSection?: string;
+}
+
+const {
+  title = 'Dimitar Slavchev',
+  description = 'Photography as a way of seeing.',
+  accent = 'var(--color-text)',
+  activeSection,
+} = Astro.props;
+
+const siteUrl = Astro.site ?? 'https://yourdomain.com';
+const canonicalURL = new URL(Astro.url.pathname, siteUrl);
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Theme init — runs synchronously before any CSS paint to prevent flash.
+       Default is dark (no attribute). Light theme sets data-theme="light". -->
+  <script is:inline>
+    (function() {
+      try {
+        var t = localStorage.getItem('site-theme');
+        if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      } catch(e) {}
+    })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonicalURL} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={canonicalURL} />
+  <title>{title === 'Dimitar Slavchev' ? title : `${title} — Dimitar Slavchev`}</title>
+  <!-- Space Grotesk -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body style={`--color-accent: ${accent}`}>
+  <Header activeSection={activeSection} />
+  <main class="site-main">
+    <slot />
+  </main>
+  <!-- portal: renders directly in <body>, above site-main's stacking context -->
+  <slot name="portal" />
+  <!-- Page transition curtain — used only for homepage enter/exit -->
+  <div id="page-curtain" class="page-curtain"></div>
+  <span class="copyright">All rights reserved</span>
+  <RevealObserver />
+</body>
+</html>
+
+<script>
+  // ── Navigation ────────────────────────────────────────────────
+  // Transitions only apply when entering or leaving the homepage.
+  // • Leaving homepage → home.astro handles its own exit (capture phase).
+  // • Arriving at homepage → home.astro handles curtain slide-up on load.
+  // • All other in-site navigation → plain, instant navigation.
+  // • Exception: if an inner page links TO /home, we set the flag so
+  //   home.astro can run its curtain entry animation.
+
+  var navigating = false;
+
+  function initNavigation() {
+    Array.from(document.querySelectorAll('a[href]')).forEach(function(el) {
+      var link = el;
+      if (link.dataset.navbound) return;
+      link.dataset.navbound = '1';
+
+      var href = link.getAttribute('href') || '';
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+      if (link.target === '_blank') return;
+      try {
+        var url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+      } catch(err) { return; }
+
+      link.addEventListener('click', function(e) {
+        // Home page intercepts its own links in capture phase — skip here
+        if (document.querySelector('.shutter-page')) return;
+        if (navigating) return;
+        navigating = true;
+        e.preventDefault();
+
+        // Navigating to home: set flag so home.astro runs curtain entry
+        try {
+          var dest = new URL(href, window.location.origin).pathname;
+          var goingHome = (dest === '/home' || dest === '/home/' || dest === '/');
+          if (goingHome) sessionStorage.setItem('page-transitioning', '1');
+        } catch(err) {}
+
+        window.location.href = href;
+      });
+    });
+  }
+
+  initNavigation();
+  document.addEventListener('astro:page-load', function() {
+    navigating = false;
+    initNavigation();
+    bindThemeToggle();
+  });
+
+  // ── Theme toggle ──────────────────────────────────────────────
+  function bindThemeToggle() {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn || btn.dataset.themebound) return;
+    btn.dataset.themebound = '1';
+
+    btn.addEventListener('click', function() {
+      var html = document.documentElement;
+      var isLight = html.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        html.removeAttribute('data-theme');
+        try { localStorage.setItem('site-theme', 'dark'); } catch(e) {}
+      } else {
+        html.setAttribute('data-theme', 'light');
+        try { localStorage.setItem('site-theme', 'light'); } catch(e) {}
+      }
+    });
+  }
+
+  bindThemeToggle();
+</script>

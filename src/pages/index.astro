@@ -1,0 +1,92 @@
+---
+import IntroLayout from '../layouts/IntroLayout.astro';
+
+/*
+  Intro animation timing:
+   0ms  — "Dimitar" rises  (820ms, ease-out)
+  220ms — "Slavchev" rises (820ms, ease-out)
+  1000ms— statement fades in (520ms)
+  1600ms— enter cue fades in (520ms)
+
+  On click:
+   0ms  — "Slavchev" falls (460ms, ease-in — gravity)
+   50ms — "Dimitar" falls  (460ms, ease-in)
+  200ms — statement fades out
+  400ms — background drains to white
+  550ms — navigate to /home
+*/
+---
+
+<IntroLayout>
+  <div class="intro-page" id="intro-page">
+
+    <!-- Background: CSS gradient placeholder.
+         Replace with a real blurred photograph when ready —
+         see .intro-bg comment in global.css. -->
+    <div class="intro-bg" aria-hidden="true" id="intro-bg"></div>
+
+    <!-- Name — two words revealed by sliding up through overflow mask -->
+    <div class="intro-name" id="intro-name" aria-label="Dimitar Slavchev">
+      <div class="intro-name__line">
+        <span class="intro-name__word" id="word-1" style="animation-delay: 0ms">
+          Dimitar
+        </span>
+      </div>
+      <div class="intro-name__line">
+        <span class="intro-name__word" id="word-2" style="animation-delay: 220ms">
+          Slavchev
+        </span>
+      </div>
+    </div>
+
+    <!-- Statement -->
+    <p class="intro-statement" id="intro-statement" style="animation-delay: 1000ms">
+      I try to photograph the invisible through the visible
+    </p>
+
+    <!-- Enter cue — intercepts click, runs exit animations, then navigates -->
+    <a href="/home" class="intro-enter" id="intro-enter" style="animation-delay: 1600ms">
+      <span class="intro-enter__line" aria-hidden="true"></span>
+      Enter
+    </a>
+
+  </div>
+</IntroLayout>
+
+<script>
+  /*
+    Exit sequence:
+      0ms  — words fall (staggered 0/50ms, 460ms duration)
+      0ms  — statement fades out (300ms)
+      0ms  — bg drains to white (380ms)
+     400ms — set sessionStorage flag, navigate
+  */
+  const enterLink = document.getElementById('intro-enter');
+  if (enterLink) {
+    enterLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const href = (enterLink as HTMLAnchorElement).getAttribute('href') ?? '/home';
+
+      const word1     = document.getElementById('word-1');
+      const word2     = document.getElementById('word-2');
+      const statement = document.getElementById('intro-statement');
+      const bg        = document.getElementById('intro-bg');
+      const page      = document.getElementById('intro-page');
+
+      const FALL = 'cubic-bezier(0.55, 0, 1, 1)'; // gravity ease-in
+
+      // Words fall, statement fades, background drains — all together
+      if (word2) word2.style.animation = `word-fall 460ms ${FALL} 0ms both`;
+      if (word1) word1.style.animation = `word-fall 460ms ${FALL} 50ms both`;
+      if (statement) statement.style.animation = `quiet-out 300ms ease-in 80ms both`;
+
+      if (bg)   { bg.style.transition = `opacity 380ms ease-in`; bg.style.opacity = '0'; }
+      if (page) { page.style.transition = `background-color 380ms ease-in`; page.style.backgroundColor = '#ffffff'; }
+
+      // Navigate after animations settle
+      await new Promise(r => setTimeout(r, 400));
+      sessionStorage.setItem('from-intro', '1');
+      window.location.href = href;
+    });
+  }
+</script>

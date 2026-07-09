@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const all = await getCollection('projects');
+const projects = all
+  .filter(p => p.data.section === 'projects')
+  .sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout
+  title="Projects"
+  description="Photography projects by Dimitar Slavchev."
+>
+  <div class="page-content">
+    <p class="page-title page-arrive">Projects</p>
+
+    <ul class="project-list reveal-stagger">
+      {projects.map(p => (
+        <li>
+          <a href={`/projects/${p.slug}`} class="project-list__item">
+            <span class="project-list__title">{p.data.title}</span>
+            {p.data.year && (
+              <span class="project-list__year">{p.data.year}</span>
+            )}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</BaseLayout>

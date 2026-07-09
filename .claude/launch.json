@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "photography-portfolio-header",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "photography-portfolio-header", "run", "dev"],
+      "port": 4321,
+      "autoPort": true
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+---
+interface Props {
+  activeSection?: string;
+}
+const { activeSection } = Astro.props;
+const pathname = Astro.url.pathname;
+
+const isProjects   = activeSection === 'projects'   || (!activeSection && pathname.startsWith('/projects'));
+const isPlayground = activeSection === 'playground' || (!activeSection && pathname.startsWith('/playground'));
+---
+
+<header class="site-header">
+  <a href="/home" class="header-name">SLAVTSCHEV</a>
+
+  <!-- Theme toggle — centered absolutely, icon via CSS show/hide so it's flash-free -->
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+    <svg class="theme-toggle__icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Moon: shown in dark mode (invite switch to light) -->
+      <path class="t-moon" fill-rule="evenodd" d="M8 2A6 6 0 1 0 8 14A6 6 0 1 0 8 2ZM6 3A5 5 0 1 0 6 13A5 5 0 1 0 6 3Z" fill="currentColor"/>
+      <!-- Sun: shown in light mode (invite switch to dark) -->
+      <g class="t-sun">
+        <circle cx="8" cy="8" r="2.5" fill="currentColor"/>
+        <rect x="7.25" y="1" width="1.5" height="2.5" rx="0.75" fill="currentColor"/>
+        <rect x="7.25" y="12.5" width="1.5" height="2.5" rx="0.75" fill="currentColor"/>
+        <rect x="1" y="7.25" width="2.5" height="1.5" rx="0.75" fill="currentColor"/>
+        <rect x="12.5" y="7.25" width="2.5" height="1.5" rx="0.75" fill="currentColor"/>
+      </g>
+    </svg>
+  </button>
+
+  <!-- Desktop nav -->
+  <nav class="header-nav">
+    <a href="/about"      class="header-nav__link" aria-current={pathname.startsWith('/about') ? 'page' : undefined}>About</a>
+    <a href="/notes"      class="header-nav__link" aria-current={pathname.startsWith('/notes') ? 'page' : undefined}>Sketchbook</a>
+    <a href="/projects"   class="header-nav__link" aria-current={isProjects ? 'page' : undefined}>Projects</a>
+    <a href="/playground" class="header-nav__link" aria-current={isPlayground ? 'page' : undefined}>Playground</a>
+  </nav>
+
+  <!-- Hamburger toggle (mobile only) -->
+  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+</header>
+
+<!-- Mobile nav overlay — outside header to avoid mix-blend-mode stacking context -->
+<div class="nav-mobile" id="nav-mobile" aria-hidden="true">
+  <nav class="nav-mobile__links">
+    <a href="/about">About</a>
+    <a href="/notes">Sketchbook</a>
+    <a href="/projects">Projects</a>
+    <a href="/playground">Playground</a>
+  </nav>
+</div>
+
+<script>
+  function initMobileNav() {
+    var toggle = document.getElementById('nav-toggle');
+    var mobile = document.getElementById('nav-mobile');
+    if (!toggle || !mobile) return;
+    // Prevent double-binding
+    if (toggle.dataset.bound) return;
+    toggle.dataset.bound = '1';
+
+    function openNav() {
+      toggle.setAttribute('aria-expanded', 'true');
+      mobile.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('nav-is-open');
+    }
+    function closeNav() {
+      toggle.setAttribute('aria-expanded', 'false');
+      mobile.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('nav-is-open');
+    }
+
+    toggle.addEventListener('click', function() {
+      toggle.getAttribute('aria-expanded') === 'true' ? closeNav() : openNav();
+    });
+
+    // Close on any link click
+    mobile.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', closeNav);
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeNav();
+    });
+  }
+
+  initMobileNav();
+  document.addEventListener('astro:page-load', function() {
+    // Reset toggle on page navigation
+    var toggle = document.getElementById('nav-toggle');
+    var mobile = document.getElementById('nav-mobile');
+    if (toggle) { toggle.dataset.bound = ''; toggle.setAttribute('aria-expanded', 'false'); }
+    if (mobile) mobile.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('nav-is-open');
+    initMobileNav();
+  });
+</script>
