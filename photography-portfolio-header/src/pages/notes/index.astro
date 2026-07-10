@@ -11,47 +11,43 @@ function formatDate(d: Date) {
 ---
 
 <BaseLayout
-  title="Sketchbook"
+  title="Notes"
   description="Early ideas, experiments, and spontaneous photography — Dimitar Slavchev."
 >
   <div class="page-content">
 
     <!-- No visible page title — nav already provides context. Still a real
          heading for SEO/screen readers. -->
-    <h1 class="sr-only">Sketchbook</h1>
+    <h1 class="sr-only">Notes</h1>
 
     <!-- Sparse description of the concept -->
-    <p class="sketchbook-lede reveal">
+    <p class="notes-lede reveal">
       Early ideas. Experiments. Photographs made on instinct, not plan.
     </p>
 
-    <div class="sketchbook-list">
+    <div class="notes-list">
       {sorted.map((note, i) => (
         <a
           href={`/notes/${note.slug}`}
-          class="sketchbook-entry reveal"
+          class="notes-entry reveal"
           style={`--reveal-delay: ${i * 55}ms`}
         >
-          <div class="sketchbook-entry__inner">
+          <!-- Square thumbnail or placeholder -->
+          <div class="notes-entry__media">
+            {note.data.image
+              ? <img src={note.data.image} alt={note.data.title} loading="lazy" />
+              : <div class="notes-entry__placeholder"></div>
+            }
+          </div>
 
-            <!-- Square thumbnail or placeholder -->
-            <div class="sketchbook-entry__image">
-              {note.data.image
-                ? <img src={note.data.image} alt={note.data.title} loading="lazy" />
-                : <div class="sketchbook-entry__placeholder"></div>
-              }
-            </div>
-
-            <!-- Text -->
-            <div class="sketchbook-entry__body">
-              <span class="sketchbook-entry__date">{formatDate(note.data.date)}</span>
-              <h2 class="sketchbook-entry__title">{note.data.title}</h2>
-              {note.data.excerpt && (
-                <p class="sketchbook-entry__excerpt">{note.data.excerpt}</p>
-              )}
-              <span class="sketchbook-entry__read">Read →</span>
-            </div>
-
+          <!-- Text -->
+          <div class="notes-entry__body">
+            <span class="notes-entry__date">{formatDate(note.data.date)}</span>
+            <h2 class="notes-entry__title">{note.data.title}</h2>
+            {note.data.excerpt && (
+              <p class="notes-entry__excerpt">{note.data.excerpt}</p>
+            )}
+            <span class="notes-entry__read">Read →</span>
           </div>
         </a>
       ))}

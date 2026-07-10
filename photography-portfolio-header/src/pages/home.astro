@@ -125,6 +125,7 @@ const covers = all
   var currentEl   = null;   // the live DOM element
   var timer       = null;
   var thumbOpen   = false;
+  var panelCloseTimeout = null; // pending "remove .is-open" from closeThumbs() — see openThumbs()
 
   // ── Position calculator ───────────────────────────────────────
   // Positions are relative to #photo-field (top = header-height from viewport top).
@@ -319,11 +320,20 @@ const covers = all
     buildThumbs();
     thumbBtn.classList.add('is-active');
 
+    // Cancel any pending "remove .is-open" from a closeThumbs() call that
+    // hasn't finished yet (e.g. the panel was toggled shut-then-open again
+    // quickly) — otherwise that stale timeout fires later and strips
+    // .is-open out from under this new open state, breaking the panel.
+    if (panelCloseTimeout) {
+      clearTimeout(panelCloseTimeout);
+      panelCloseTimeout = null;
+    }
+
     // Anchor the reveal to the current photo's actual on-screen position —
     // the panel expands outward from the photo instead of cross-fading in,
     // so the transition reads as "one image becoming a grid."
     var panelRect = panel.getBoundingClientRect();
-    if (currentEl) {
+    if (currentEl && currentEl.isConnected) {
       panel.style.transition = 'none';
       panel.style.clipPath   = clipInsetFromRect(currentEl.getBoundingClientRect(), panelRect);
       panel.classList.add('is-open');
@@ -371,10 +381,14 @@ const covers = all
     // the mirror image of the expand-out on open.
     var panelRect = panel.getBoundingClientRect();
     panel.style.transition = 'clip-path ' + PANEL_DUR_MS + 'ms ' + EASE_REVEAL;
-    panel.style.clipPath   = currentEl
+    panel.style.clipPath   = (currentEl && currentEl.isConnected)
       ? clipInsetFromRect(currentEl.getBoundingClientRect(), panelRect)
       : 'inset(50% 50% 50% 50%)';
-    setTimeout(function() { panel.classList.remove('is-open'); }, PANEL_DUR_MS);
+    if (panelCloseTimeout) clearTimeout(panelCloseTimeout);
+    panelCloseTimeout = setTimeout(function() {
+      panel.classList.remove('is-open');
+      panelCloseTimeout = null;
+    }, PANEL_DUR_MS);
 
     // Slide + fade in arrows back to center
     var t = 'opacity 360ms ' + ARROW_IN_EASE + ', transform 400ms ' + ARROW_IN_EASE;

@@ -67,7 +67,7 @@
   /* Layout */
   --sidebar-width: 190px;
   --header-height: 72px;
-  /* Shared centered-column width — Series and Sketchbook both use this
+  /* Shared centered-column width — Series and Notes both use this
      so the two pages read as one consistent rail rather than drifting. */
   --editorial-width: 860px;
 
@@ -189,35 +189,33 @@ button {
   gap: var(--space-4);
 }
 
-/* Theme toggle — docked at the end of the nav cluster.
-   Inherits mix-blend-mode:difference from the header stacking context:
-   icon is #fff, auto-inverts to black on light backgrounds. */
+/* Theme toggle — docked at the end of the nav cluster, styled as a quiet
+   typographic peer of the nav links (not an icon) so it reads as part of
+   the same nav rhythm. Muted rather than full text color marks it as a
+   utility control rather than a navigation destination — it shares the
+   nav links' underline-sweep hover (see .header-nav__link::after below)
+   rather than inventing a separate hover language. */
 .theme-toggle {
-  color: var(--color-text);
+  position: relative;
+  padding-bottom: 2px;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
   background: none;
   border: none;
-  padding: 8px 14px;
-  margin-right: -14px;
   cursor: pointer;
-  opacity: 0.42;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity var(--dur-fast) var(--ease);
+  transition: color var(--dur-fast) var(--ease);
 }
-.theme-toggle:hover { opacity: 1; }
+.theme-toggle:hover { color: var(--color-text); }
 
-/* Icon sizing + show/hide per theme.
-   Dark mode (default): moon visible, sun hidden.
-   Light mode: sun visible, moon hidden. */
-.theme-toggle__icon {
-  width: 14px;
-  height: 14px;
-  display: block;
-}
-.theme-toggle .t-sun  { display: none; }
-[data-theme="light"] .theme-toggle .t-sun  { display: block; }
-[data-theme="light"] .theme-toggle .t-moon { display: none; }
+/* Shows the current mode (clicking switches it). Flash-free: keyed off
+   [data-theme], which BaseLayout's inline head script already sets
+   before first paint. */
+.theme-toggle .t-light { display: none; }
+[data-theme="light"] .theme-toggle .t-dark  { display: none; }
+[data-theme="light"] .theme-toggle .t-light { display: inline; }
 
 .header-name {
   font-family: var(--font-ui);
@@ -242,8 +240,11 @@ button {
   padding-bottom: 2px;
 }
 
-/* Underline sweeps left → right on hover / current page */
-.header-nav__link::after {
+/* Underline sweeps left → right on hover / current page — shared with
+   .theme-toggle so the toggle reads as a peer of these links, not a
+   separate control with its own hover language. */
+.header-nav__link::after,
+.theme-toggle::after {
   content: '';
   position: absolute;
   bottom: 0; left: 0;
@@ -255,7 +256,8 @@ button {
 }
 
 .header-nav__link:hover::after,
-.header-nav__link[aria-current="page"]::after {
+.header-nav__link[aria-current="page"]::after,
+.theme-toggle:hover::after {
   transform: scaleX(1);
 }
 
@@ -416,10 +418,10 @@ button {
   display: block;
   text-decoration: none;
   color: inherit;
-  width: 66%;
+  width: 54%;
 }
-.series-item--lg { width: 80%; }
-.series-item--sm { width: 52%; }
+.series-item--lg { width: 66%; }
+.series-item--sm { width: 42%; }
 
 .series-item--left  { align-self: flex-start; text-align: left; }
 .series-item--right { align-self: flex-end;   text-align: right; }
@@ -430,7 +432,7 @@ button {
   margin-bottom: var(--space-3);
   aspect-ratio: 1 / 1;
 }
-.series-item--lg .series-item__media { aspect-ratio: 4 / 5; }
+.series-item--lg .series-item__media { aspect-ratio: 5 / 6; }
 .series-item--sm .series-item__media { aspect-ratio: 4 / 3; }
 
 .series-item__media img {
@@ -568,6 +570,24 @@ button {
 .project-sidebar {
   position: sticky;
   top: calc(var(--header-height) + var(--space-5));
+}
+
+/* Same typographic recipe as .note-back, adapted for inline top placement:
+   a wayfinding cue above the title (galleries can be long, unlike a note's
+   short linear read), not a "you've reached the end" marker at the bottom. */
+.project-back {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.project-back:hover {
+  color: var(--color-text);
 }
 
 .project-header {
@@ -806,80 +826,78 @@ button {
 
 
 /* ============================================
-   SKETCHBOOK (notes index)
+   NOTES (index)
    Early ideas, experiments, spontaneous photography.
-   Layout: square thumbnail left + text right, dividers between entries.
+   Layout: image on top, caption centered below — same basic anatomy as
+   the Series rail (image → quiet caption) without Series' alternating-
+   sides/varying-size device, which is a Series-specific signature. Notes
+   reads as a denser, more uniform sequence, not a curated hierarchy —
+   and every entry is centered, matching the rail's own centering instead
+   of fighting it with a left-aligned internal row.
    ============================================ */
 
 /* Sparse concept lede — shares the Series rail's width so the two
    pages read as one consistent centered column. */
-.sketchbook-lede {
+.notes-lede {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--color-muted);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
   max-width: var(--editorial-width);
   margin-inline: auto;
+  text-align: center;
 }
 
-/* Entry list — divider on first child too via :before */
-.sketchbook-list {
+.notes-list {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--color-border);
+  align-items: center;
+  gap: var(--space-6);
   max-width: var(--editorial-width);
   margin-inline: auto;
 }
 
-.sketchbook-entry {
-  display: block;
+.notes-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   text-decoration: none;
   color: inherit;
-  border-bottom: 1px solid var(--color-border);
-  padding: var(--space-4) 0;
+  width: 100%;
+  max-width: 320px;
   transition: opacity var(--dur-fast) var(--ease);
 }
 
-.sketchbook-entry:hover { opacity: 0.6; }
+.notes-entry:hover { opacity: 0.6; }
 
-/* Two-column: image left, text right */
-.sketchbook-entry__inner {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: var(--space-4);
-  align-items: start;
-}
-
-/* Square thumbnail */
-.sketchbook-entry__image {
-  width: 140px;
+.notes-entry__media {
+  width: 220px;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  flex-shrink: 0;
+  margin-bottom: var(--space-3);
 }
 
-.sketchbook-entry__image img {
+.notes-entry__media img {
   width: 100%; height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.sketchbook-entry__placeholder {
+.notes-entry__placeholder {
   width: 100%; height: 100%;
   background: var(--color-surface);
 }
 
-/* Text column */
-.sketchbook-entry__body {
+.notes-entry__body {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  min-height: 140px;  /* match image height */
+  align-items: center;
 }
 
-.sketchbook-entry__date {
+.notes-entry__date {
   display: block;
   font-family: var(--font-ui);
   font-size: var(--text-xs);
@@ -889,7 +907,7 @@ button {
   margin-bottom: var(--space-1);
 }
 
-.sketchbook-entry__title {
+.notes-entry__title {
   font-family: var(--font-primary);
   font-size: var(--text-lg);
   font-weight: 500;
@@ -899,40 +917,36 @@ button {
   margin-bottom: var(--space-2);
 }
 
-.sketchbook-entry__excerpt {
+.notes-entry__excerpt {
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   line-height: 1.7;
   color: var(--color-muted);
-  max-width: 52ch;
+  max-width: 42ch;
+  margin-inline: auto;
   margin-bottom: var(--space-2);
 }
 
-.sketchbook-entry__read {
+.notes-entry__read {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--color-muted);
   opacity: 0;
-  transform: translateX(-4px);
+  transform: translateY(-4px);
   transition:
     opacity var(--dur-fast) var(--ease),
     transform var(--dur-fast) var(--ease);
 }
 
-.sketchbook-entry:hover .sketchbook-entry__read {
+.notes-entry:hover .notes-entry__read {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(0);
 }
 
 @media (max-width: 600px) {
-  .sketchbook-entry__inner {
-    grid-template-columns: 100px 1fr;
-    gap: var(--space-3);
-  }
-  .sketchbook-entry__image { width: 100px; }
-  .sketchbook-entry__body  { min-height: 100px; }
+  .notes-entry__media { width: 160px; }
 }
 
 .note-meta {
@@ -1475,14 +1489,6 @@ body.nav-is-open { overflow: hidden; }
   .project-gallery {
     grid-template-columns: 1fr;
   }
-
-  /* Sketchbook entries: narrower image */
-  .sketchbook-entry__inner {
-    grid-template-columns: 100px 1fr;
-    gap: var(--space-3);
-  }
-  .sketchbook-entry__image { width: 100px; }
-  .sketchbook-entry__body  { min-height: 100px; }
 
   /* About: narrower portrait */
   .about-photo { width: 110px; }

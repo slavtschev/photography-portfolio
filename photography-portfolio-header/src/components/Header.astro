@@ -11,24 +11,17 @@ const isSeries = pathname.startsWith('/series');
   <div class="header-right">
     <nav class="header-nav">
       <a href="/about"  class="header-nav__link" aria-current={pathname.startsWith('/about') ? 'page' : undefined}>About</a>
-      <a href="/notes"  class="header-nav__link" aria-current={pathname.startsWith('/notes') ? 'page' : undefined}>Sketchbook</a>
+      <a href="/notes"  class="header-nav__link" aria-current={pathname.startsWith('/notes') ? 'page' : undefined}>Notes</a>
       <a href="/series" class="header-nav__link" aria-current={isSeries ? 'page' : undefined}>Series</a>
     </nav>
 
-    <!-- Theme toggle — icon via CSS show/hide so it's flash-free -->
+    <!-- Theme toggle — a typographic peer of the nav links, not an icon.
+         Shows the current mode; text swap is pure CSS keyed off
+         [data-theme] (same flash-free show/hide pattern the old sun/moon
+         icon used), so no JS is needed beyond the existing toggle logic. -->
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
-      <svg class="theme-toggle__icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <!-- Moon: shown in dark mode (invite switch to light) -->
-        <path class="t-moon" fill-rule="evenodd" d="M8 2A6 6 0 1 0 8 14A6 6 0 1 0 8 2ZM6 3A5 5 0 1 0 6 13A5 5 0 1 0 6 3Z" fill="currentColor"/>
-        <!-- Sun: shown in light mode (invite switch to dark) -->
-        <g class="t-sun">
-          <circle cx="8" cy="8" r="2.5" fill="currentColor"/>
-          <rect x="7.25" y="1" width="1.5" height="2.5" rx="0.75" fill="currentColor"/>
-          <rect x="7.25" y="12.5" width="1.5" height="2.5" rx="0.75" fill="currentColor"/>
-          <rect x="1" y="7.25" width="2.5" height="1.5" rx="0.75" fill="currentColor"/>
-          <rect x="12.5" y="7.25" width="2.5" height="1.5" rx="0.75" fill="currentColor"/>
-        </g>
-      </svg>
+      <span class="t-dark">Dark</span>
+      <span class="t-light">Light</span>
     </button>
   </div>
 
@@ -44,7 +37,7 @@ const isSeries = pathname.startsWith('/series');
 <div class="nav-mobile" id="nav-mobile" aria-hidden="true">
   <nav class="nav-mobile__links">
     <a href="/about">About</a>
-    <a href="/notes">Sketchbook</a>
+    <a href="/notes">Notes</a>
     <a href="/series">Series</a>
   </nav>
 </div>
