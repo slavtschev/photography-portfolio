@@ -4,16 +4,35 @@ import { getCollection } from 'astro:content';
 
 export async function getStaticPaths() {
   const all = await getCollection('series');
-  const sorted = all.sort((a, b) => a.data.order - b.data.order);
-
-  return sorted.map((project) => ({
-    params: { slug: project.slug },
-    props: { project },
-  }));
+  return all
+    .sort((a, b) => a.data.order - b.data.order)
+    .map((project) => ({ params: { slug: project.slug }, props: { project } }));
 }
 
 const { project } = Astro.props;
-const { data } = project;
+const { data }    = project;
+
+// Layout type driven by content tag
+const layout =
+    data.tag === 'Observations' ? 'sequence'
+  : data.tag === 'Play'         ? 'fragments'
+  : 'editorial'; // Series (default)
+
+// Editorial: first 3 featured, rest in 6-col square grid
+const featured = layout === 'editorial' ? data.images.slice(0, 3) : [];
+const rest      = layout === 'editorial' ? data.images.slice(3)   : data.images;
+
+// Fragment positions: each image gets a designed column + vertical offset.
+// Uses CSS custom props (--fgc, --fpt) so media queries can safely override
+// inline styles without !important gymnastics.
+const FRAG_POS = [
+  { col: 1, span: 2, pt: 0  },   // left, narrow
+  { col: 4, span: 3, pt: 56 },   // right, medium, dropped
+  { col: 2, span: 3, pt: 28 },   // center-left, medium
+  { col: 5, span: 2, pt: 20 },   // far right, narrow
+  { col: 1, span: 3, pt: 44 },   // left, medium, mid-drop
+  { col: 3, span: 2, pt: 12 },   // center, narrow
+];
 ---
 
 <BaseLayout
@@ -21,47 +40,134 @@ const { data } = project;
   description={data.description ?? `${data.title} — Dimitar Slavchev`}
   accent={data.accent}
 >
-  <div class="page-content project-page">
+  <article class="series-detail">
 
-    <!-- Sticky sidebar: title, meta, description -->
-    <aside class="project-sidebar page-arrive">
-      <a href="/series" class="project-back">← Series</a>
-      <header class="project-header">
-        <h1 class="project-header__title">{data.title}</h1>
-        {(data.date || data.year) && (
-          <div class="project-header__meta">
-            <span class="project-header__date">{data.date ?? data.year}</span>
+    <a href="/series" class="series-back">← Series</a>
+
+    <!-- ── Editorial header: 6-column grid (shared by all layouts) ── -->
+    <header class="series-intro">
+      {data.tag && <span class="series-intro__category">{data.tag}</span>}
+      <h1 class="series-intro__title">{data.title}</h1>
+      {data.description && <p class="series-intro__body">{data.description}</p>}
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════
+         LAYOUT A — "editorial"  (tag: Series)
+         Featured 3 anchored to cols 4–6, cols 1–3 are negative
+         space. Remaining images in a 6-col square grid.
+    ═══════════════════════════════════════════════════════ -->
+    {layout === 'editorial' && (
+      <>
+        {featured.length > 0 && (
+          <div class="ed-featured">
+            {featured.map((src, i) => (
+              <div
+                class="ed-featured__cell"
+                style={`grid-column: ${4 + i}`}
+                data-lb
+                data-index={i}
+                role="button"
+                tabindex="0"
+                aria-label={`Open image ${i + 1}`}
+              >
+                <img
+                  src={src.startsWith('http') ? src : `/images/${src}`}
+                  alt={data.alts?.[i] ?? ''}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                />
+              </div>
+            ))}
           </div>
         )}
-        {data.description && (
-          <p class="project-header__body">{data.description}</p>
+
+        {rest.length > 0 && (
+          <div class="ed-grid">
+            {rest.map((src, i) => {
+              const idx = i + featured.length;
+              return (
+                <div
+                  class="ed-grid__cell"
+                  data-lb
+                  data-index={idx}
+                  role="button"
+                  tabindex="0"
+                  aria-label={`Open image ${idx + 1}`}
+                >
+                  <img
+                    src={src.startsWith('http') ? src : `/images/${src}`}
+                    alt={data.alts?.[idx] ?? ''}
+                    loading="lazy"
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
-      </header>
-    </aside>
+      </>
+    )}
 
-    <!-- Gallery: 2 columns, scrollable -->
-    <div class="project-gallery" id="project-gallery">
-      {data.images.map((src, i) => (
-        <div
-          class="project-gallery__cell reveal"
-          data-index={i}
-          role="button"
-          tabindex="0"
-          aria-label={`Open image ${i + 1}`}
-          style={`--reveal-delay: ${(i % 2) * 60}ms`}
-        >
-          <img
-            src={src.startsWith('http') ? src : `/images/${src}`}
-            alt={data.alts?.[i] ?? ''}
-            loading={i < 2 ? 'eager' : 'lazy'}
-          />
-        </div>
-      ))}
-    </div>
+    <!-- ═══════════════════════════════════════════════════════
+         LAYOUT B — "sequence"  (tag: Observations)
+         3-column grid, portrait ratio. Clean documentary
+         presentation — strength comes from order and rhythm,
+         not from layout experimentation.
+    ═══════════════════════════════════════════════════════ -->
+    {layout === 'sequence' && (
+      <div class="seq-grid">
+        {data.images.map((src, i) => (
+          <div
+            class="seq-grid__cell"
+            data-lb
+            data-index={i}
+            role="button"
+            tabindex="0"
+            aria-label={`Open image ${i + 1}`}
+          >
+            <img
+              src={src.startsWith('http') ? src : `/images/${src}`}
+              alt={data.alts?.[i] ?? ''}
+              loading={i < 3 ? 'eager' : 'lazy'}
+            />
+          </div>
+        ))}
+      </div>
+    )}
 
-  </div>
+    <!-- ═══════════════════════════════════════════════════════
+         LAYOUT C — "fragments"  (tag: Play)
+         6-col grid. Each cell carries --fgc (column position)
+         and --fpt (top offset) as CSS custom props, creating
+         the designed asymmetry. Media queries override these
+         cleanly without !important.
+    ═══════════════════════════════════════════════════════ -->
+    {layout === 'fragments' && (
+      <div class="frag-field">
+        {data.images.map((src, i) => {
+          const p = FRAG_POS[i % FRAG_POS.length];
+          return (
+            <div
+              class="frag-field__cell"
+              style={`--fgc: ${p.col} / span ${p.span}; --fpt: ${p.pt}px`}
+              data-lb
+              data-index={i}
+              role="button"
+              tabindex="0"
+              aria-label={`Open image ${i + 1}`}
+            >
+              <img
+                src={src.startsWith('http') ? src : `/images/${src}`}
+                alt={data.alts?.[i] ?? ''}
+                loading={i < 2 ? 'eager' : 'lazy'}
+              />
+            </div>
+          );
+        })}
+      </div>
+    )}
 
-  <!-- Lightbox — portal slot so it sits in root stacking context above header -->
+  </article>
+
+  <!-- Lightbox — consistent across all layouts -->
   <div slot="portal" id="proj-lb" class="s-lb s-lb--light" aria-hidden="true" role="dialog" aria-modal="true">
     <button class="s-lb__close" id="proj-lb-close" aria-label="Close">Close</button>
     <button class="s-lb__prev"  id="proj-lb-prev"  aria-label="Previous">&#8592;</button>
@@ -73,19 +179,264 @@ const { data } = project;
 
 </BaseLayout>
 
+<style>
+  /* ── Page wrapper ────────────────────────────────────────── */
+  .series-detail {
+    padding: var(--gutter);
+    padding-top: calc(var(--header-height) + var(--gutter));
+  }
+
+  /* ── Back link ───────────────────────────────────────────── */
+  .series-back {
+    display: inline-block;
+    margin-bottom: var(--space-5);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    text-decoration: none;
+    transition: color var(--dur-fast) var(--ease);
+  }
+  .series-back:hover { color: var(--color-text); }
+
+  /* ── Editorial intro header: 6-col (all layouts) ─────────── */
+  .series-intro {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    column-gap: var(--space-3);
+    row-gap: var(--space-2);
+    margin-bottom: var(--space-6);
+  }
+  .series-intro__category {
+    grid-column: 4 / 7;
+    grid-row: 1;
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    align-self: end;
+  }
+  .series-intro__title {
+    grid-column: 3 / 7;
+    grid-row: 2;
+    font-family: var(--font-primary);
+    font-size: clamp(2.25rem, 4.5vw, 4.5rem);
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    color: var(--color-text);
+    margin: 0;
+  }
+  .series-intro__body {
+    grid-column: 4 / 7;
+    grid-row: 3;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+    color: var(--color-muted);
+    max-width: 52ch;
+    margin: 0;
+    padding-top: var(--space-2);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     SHARED REVEAL STATE
+     All gallery cells start hidden; IntersectionObserver adds
+     .visible when they enter the viewport.
+  ════════════════════════════════════════════════════════════ */
+  .ed-featured__cell,
+  .ed-grid__cell,
+  .seq-grid__cell,
+  .frag-field__cell {
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+      opacity   380ms var(--ease),
+      transform 380ms var(--ease),
+      filter    var(--dur-base) var(--ease);
+  }
+  .ed-featured__cell.visible,
+  .ed-grid__cell.visible,
+  .seq-grid__cell.visible,
+  .frag-field__cell.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     LAYOUT A — EDITORIAL (Series)
+     Featured 3 at cols 4–6 (via inline grid-column),
+     cols 1–3 are intentional empty space.
+  ════════════════════════════════════════════════════════════ */
+  .ed-featured {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .ed-featured__cell {
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .ed-featured__cell img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+  }
+  .ed-featured__cell.visible:hover img,
+  .ed-featured__cell.visible:focus-visible img {
+    filter: brightness(0.88) saturate(0.6);
+  }
+
+  .ed-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+  }
+  .ed-grid__cell {
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .ed-grid__cell img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+  }
+  .ed-grid__cell.visible:hover img,
+  .ed-grid__cell.visible:focus-visible img {
+    filter: brightness(0.88) saturate(0.6);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     LAYOUT B — SEQUENCE (Observations / Street)
+     5-col square grid. Clean, documentary, ordered — each frame
+     an individual observation. Gap gives each image room to breathe.
+  ════════════════════════════════════════════════════════════ */
+  .seq-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  .seq-grid__cell {
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .seq-grid__cell img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+  }
+  .seq-grid__cell.visible:hover img,
+  .seq-grid__cell.visible:focus-visible img {
+    filter: brightness(0.88) saturate(0.6);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     LAYOUT C — FRAGMENTS (Play)
+     6-col grid. --fgc sets each cell's column position and span;
+     --fpt sets the vertical drop offset. Both come from Astro
+     inline styles and are overridden at breakpoints by CSS rules
+     (not !important) since CSS props cascade cleanly.
+     Generous spacing (column-gap, padding-bottom) gives images
+     room to feel like isolated fragments rather than a gallery.
+  ════════════════════════════════════════════════════════════ */
+  .frag-field {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-auto-flow: row;
+    column-gap: var(--space-4);
+    row-gap: 0;
+    padding-bottom: var(--space-6);
+  }
+  .frag-field__cell {
+    grid-column: var(--fgc);
+    padding-top: var(--fpt);
+    padding-bottom: var(--space-6);
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .frag-field__cell img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+  }
+  .frag-field__cell.visible:hover img,
+  .frag-field__cell.visible:focus-visible img {
+    filter: brightness(0.88) saturate(0.6);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     RESPONSIVE — tablet (≤ 1024px)
+  ════════════════════════════════════════════════════════════ */
+  @media (max-width: 1024px) {
+    /* Header: 4-col */
+    .series-intro    { grid-template-columns: repeat(4, 1fr); }
+    .series-intro__category { grid-column: 3 / 5; }
+    .series-intro__title    { grid-column: 1 / 5; }
+    .series-intro__body     { grid-column: 3 / 5; }
+
+    /* Editorial: shift featured to cols 2–4 of 4-col grid */
+    .ed-featured { grid-template-columns: repeat(4, 1fr); }
+    .ed-featured__cell:nth-child(1) { grid-column: 2; }
+    .ed-featured__cell:nth-child(2) { grid-column: 3; }
+    .ed-featured__cell:nth-child(3) { grid-column: 4; }
+    .ed-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+    /* Sequence: 3-col on tablet */
+    .seq-grid { grid-template-columns: repeat(3, 1fr); }
+
+    /* Fragments: collapse to 4-col, reset designed positions */
+    .frag-field { grid-template-columns: repeat(3, 1fr); column-gap: var(--space-3); }
+    .frag-field__cell { grid-column: auto; padding-top: 0; }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     RESPONSIVE — mobile (≤ 768px)
+  ════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    /* Header: single column */
+    .series-intro    { grid-template-columns: 1fr; row-gap: var(--space-2); }
+    .series-intro__category { grid-column: 1; grid-row: 1; }
+    .series-intro__title    { grid-column: 1; grid-row: 2; }
+    .series-intro__body     { grid-column: 1; grid-row: 3; }
+
+    /* Editorial: stack featured, 2-col grid */
+    .ed-featured { grid-template-columns: 1fr; gap: 4px; }
+    .ed-featured__cell { grid-column: 1 !important; }
+    .ed-featured__cell img { aspect-ratio: 3 / 2; }
+    .ed-grid { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+
+    /* Sequence: 2-col on mobile, keep square ratio */
+    .seq-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+    /* Fragments: 2-col, remove vertical offsets */
+    .frag-field { grid-template-columns: repeat(2, 1fr); column-gap: var(--space-2); }
+    .frag-field__cell { grid-column: auto; padding-top: 0; }
+  }
+</style>
+
 <script>
+  // ── Lightbox ──────────────────────────────────────────────────
   function initLightbox() {
-    var gallery  = document.getElementById('project-gallery');
-    var lb       = document.getElementById('proj-lb');
-    var lbImg    = document.getElementById('proj-lb-img');
-    var lbClose  = document.getElementById('proj-lb-close');
-    var lbPrev   = document.getElementById('proj-lb-prev');
-    var lbNext   = document.getElementById('proj-lb-next');
+    var lb      = document.getElementById('proj-lb');
+    var lbImg   = document.getElementById('proj-lb-img');
+    var lbClose = document.getElementById('proj-lb-close');
+    var lbPrev  = document.getElementById('proj-lb-prev');
+    var lbNext  = document.getElementById('proj-lb-next');
 
-    if (!gallery || !lb || !lbImg) return;
+    if (!lb || !lbImg) return;
 
-    var cells  = Array.from(gallery.querySelectorAll('.project-gallery__cell'));
-    var images = cells.map(function(c) {
+    var allCells = Array.from(document.querySelectorAll('[data-lb]')).sort(
+      function(a, b) { return parseInt(a.dataset.index) - parseInt(b.dataset.index); }
+    );
+
+    var images = allCells.map(function(c) {
       var el = c.querySelector('img');
       return { src: el ? el.src : '', alt: el ? el.alt : '' };
     }).filter(function(d) { return d.src; });
@@ -118,17 +469,17 @@ const { data } = project;
       }, 130);
     }
 
-    // Cell clicks
-    cells.forEach(function(cell, i) {
-      cell.addEventListener('click', function() { lbOpen(i); });
+    allCells.forEach(function(cell) {
+      var idx = parseInt(cell.dataset.index);
+      cell.addEventListener('click', function() { lbOpen(idx); });
       cell.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') lbOpen(i);
+        if (e.key === 'Enter' || e.key === ' ') lbOpen(idx);
       });
     });
 
-    lbClose.addEventListener('click', lbDismiss);
-    lbPrev.addEventListener('click', function() { lbGoto(current - 1); });
-    lbNext.addEventListener('click', function() { lbGoto(current + 1); });
+    if (lbClose) lbClose.addEventListener('click', lbDismiss);
+    if (lbPrev)  lbPrev.addEventListener('click', function() { lbGoto(current - 1); });
+    if (lbNext)  lbNext.addEventListener('click', function() { lbGoto(current + 1); });
     lb.addEventListener('click', function(e) { if (e.target === lb) lbDismiss(); });
 
     document.addEventListener('keydown', function(e) {
@@ -139,6 +490,38 @@ const { data } = project;
     });
   }
 
+  // ── Scroll reveal ─────────────────────────────────────────────
+  // Featured cells: stagger on page load (they're always above fold).
+  // All other cells: appear as they scroll into the viewport.
+  function initReveal() {
+    var featured = Array.from(document.querySelectorAll('.ed-featured__cell'));
+    var rest     = Array.from(document.querySelectorAll('.ed-grid__cell, .seq-grid__cell, .frag-field__cell'));
+
+    // Featured: pre-assign stagger so they cascade left to right on load
+    featured.forEach(function(cell, i) {
+      cell.style.transitionDelay = (i * 80) + 'ms';
+    });
+    // Non-featured: no cumulative stagger — reveal promptly on scroll
+    rest.forEach(function(cell) {
+      cell.style.transitionDelay = '0ms';
+    });
+
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          obs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.05, rootMargin: '0px 0px -16px 0px' });
+
+    featured.concat(rest).forEach(function(cell) { obs.observe(cell); });
+  }
+
   initLightbox();
-  document.addEventListener('astro:page-load', initLightbox);
+  initReveal();
+  document.addEventListener('astro:page-load', function() {
+    initLightbox();
+    initReveal();
+  });
 </script>

@@ -2,10 +2,29 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
-const all = await getCollection('series');
-const covers = all
+const all    = await getCollection('series');
+const sorted = all.sort((a, b) => a.data.order - b.data.order);
+
+// Covers → drives the hero slideshow (unchanged)
+const covers = sorted
   .filter(p => p.data.cover)
   .map(p => ({ src: p.data.cover, title: p.data.title, slug: p.slug }));
+
+// All images from every series → drives the thumbnail gallery.
+// Each image carries its parent series' tag so JS can assign visual weight.
+const allImages = sorted.flatMap(s =>
+  s.data.images.map((src, i) => ({
+    src:   src.startsWith('http') ? src : `/images/${src}`,
+    alt:   s.data.alts?.[i] ?? '',
+    title: s.data.title,
+    slug:  s.slug,
+    tag:   s.data.tag ?? '',
+    // Visual tier: Series → dominant; Observations → mid; Play → small
+    tier:  s.data.tag === 'Series'       ? 'hero'
+         : s.data.tag === 'Observations' ? 'mid'
+         : 'small',
+  }))
+);
 ---
 
 <BaseLayout title="Dimitar Slavchev" description="Photography as a way of seeing.">
@@ -27,7 +46,7 @@ const covers = all
     <div id="photo-field"></div>
 
     <div id="thumb-panel">
-      <div id="thumb-grid"></div>
+      <div id="thumb-list"></div>
     </div>
 
     <!-- Bottom bar: info (left) · controls (center) · copyright (right) -->
@@ -80,12 +99,12 @@ const covers = all
 
 </BaseLayout>
 
-<script define:vars={{ covers }}>
+<script define:vars={{ covers, allImages }}>
 
   // ── Element refs ───────────────────────────────────────────────
   var field     = document.getElementById('photo-field');
   var panel     = document.getElementById('thumb-panel');
-  var grid      = document.getElementById('thumb-grid');
+  var list      = document.getElementById('thumb-list');
   var prevBtn   = document.getElementById('prev-btn');
   var thumbBtn  = document.getElementById('thumb-btn');
   var nextBtn   = document.getElementById('next-btn');
@@ -97,7 +116,6 @@ const covers = all
   var ROOT_STYLE  = getComputedStyle(document.documentElement);
   var EASE        = ROOT_STYLE.getPropertyValue('--ease').trim()        || 'cubic-bezier(0.16,1,0.3,1)';
   var EASE_REVEAL = ROOT_STYLE.getPropertyValue('--ease-reveal').trim() || 'cubic-bezier(0.87,0,0.13,1)';
-  var PANEL_DUR_MS = parseInt(ROOT_STYLE.getPropertyValue('--dur-panel'), 10) || 320;
 
   // ── Timing ────────────────────────────────────────────────────
   var HEADER    = 72;   // matches --header-height CSS token
@@ -125,7 +143,7 @@ const covers = all
   var currentEl   = null;   // the live DOM element
   var timer       = null;
   var thumbOpen   = false;
-  var panelCloseTimeout = null; // pending "remove .is-open" from closeThumbs() — see openThumbs()
+  var renderGen   = 0;      // bumped on every renderImage() call — see renderImage()
 
   // ── Position calculator ───────────────────────────────────────
   // Positions are relative to #photo-field (top = header-height from viewport top).
@@ -162,6 +180,13 @@ const covers = all
 
   // ── Image renderer ────────────────────────────────────────────
   function renderImage(step, cover, isFirstShot) {
+    // Every call gets its own generation number. If a newer renderImage()
+    // call comes in before this one's pending "create the new element"
+    // callback fires (e.g. goNext() firing twice in quick succession),
+    // the stale callback below checks its generation and bails instead
+    // of creating an orphaned element that never gets faded out/removed —
+    // that orphaning is what caused stray leftover photos to pile up.
+    var myGen = ++renderGen;
     step = clampSize(step);
 
     // Fade out current element
@@ -176,6 +201,7 @@ const covers = all
     var delay = currentEl ? FADE_OUT + GAP : 0;
 
     setTimeout(function() {
+      if (myGen !== renderGen) return; // superseded by a newer render — abort
       var pos = getPos(step.slot, step.w, step.h);
       var el  = document.createElement('div');
       el.style.cssText = [
@@ -278,35 +304,81 @@ const covers = all
   if (closeBtn) closeBtn.addEventListener('click', closeThumbs);
 
   // ── Thumbnails ────────────────────────────────────────────────
-  // Converts a rect (viewport coords) into a clip-path inset() relative to
-  // panelRect — used to anchor the thumbnail panel's reveal to wherever the
-  // current photo actually sits, instead of a flat cross-fade.
-  function clipInsetFromRect(rect, panelRect) {
-    var top    = Math.max(0, rect.top    - panelRect.top);
-    var left   = Math.max(0, rect.left   - panelRect.left);
-    var right  = Math.max(0, panelRect.right  - rect.right);
-    var bottom = Math.max(0, panelRect.bottom - rect.bottom);
-    return 'inset(' + top + 'px ' + right + 'px ' + bottom + 'px ' + left + 'px)';
-  }
-
+  // Plain, deliberately simple show/hide: a single classList toggle drives
+  // a CSS opacity/visibility transition on #thumb-panel (see global.css).
+  // An earlier version anchored the reveal to the current photo's on-screen
+  // rect via an animated clip-path — it kept breaking in ways that were
+  // hard to pin down without a live browser to test against, so it's gone
+  // in favor of something with much less surface area for bugs.
   function buildThumbs() {
-    grid.innerHTML = '';
-    covers.forEach(function(c, idx) {
-      var btn = document.createElement('button');
-      btn.className = 'thumb-item';
-      // Hidden pre-state for the assemble-in stagger — see openThumbs().
-      btn.style.opacity   = '0';
-      btn.style.transform = 'translateY(8px)';
-      var img = document.createElement('img');
-      img.src      = c.src;
-      img.alt      = c.title;
-      img.width    = 400;
-      img.height   = 400;
-      img.decoding = 'async';
-      img.style.cssText = 'display:block;width:100%;aspect-ratio:1/1;object-fit:cover;';
-      btn.appendChild(img);
-      btn.addEventListener('click', function() { lbOpen(idx); });
-      grid.appendChild(btn);
+    list.innerHTML = '';
+
+    // ── Interleaved ordering: [hero, hero, mid, small] per wave ──
+    // Renders as a vertical card list (like the series index page):
+    //   hero  → 62% wide, 3:4 portrait, dominant
+    //   mid   → 46% wide, 4:5 portrait, secondary
+    //   small → 30% wide, 1:1 square, textural
+    // Even-indexed items align left, odd align right.
+    var heroes = allImages.filter(function(img) { return img.tier === 'hero';  });
+    var mids   = allImages.filter(function(img) { return img.tier === 'mid';   });
+    var smalls = allImages.filter(function(img) { return img.tier === 'small'; });
+
+    var ordered = [];
+    var hi = 0, mi = 0, si = 0;
+    while (hi < heroes.length || mi < mids.length || si < smalls.length) {
+      if (hi < heroes.length) ordered.push(heroes[hi++]);
+      if (hi < heroes.length) ordered.push(heroes[hi++]);
+      if (mi < mids.length)   ordered.push(mids[mi++]);
+      if (si < smalls.length) ordered.push(smalls[si++]);
+    }
+
+    // Lightbox will navigate through this display-ordered array
+    var lbImgs = ordered;
+
+    ordered.forEach(function(img, idx) {
+      var side = idx % 2 === 0 ? 'left' : 'right';
+      var btn  = document.createElement('button');
+      btn.className = 'thumb-item thumb-item--' + img.tier + ' thumb-item--' + side;
+
+      // Image wrapped in media div (clips overflow, holds bg colour)
+      var media = document.createElement('div');
+      media.className = 'thumb-media';
+      var el = document.createElement('img');
+      el.src      = img.src;
+      el.alt      = img.alt || img.title;
+      el.decoding = 'async';
+      el.loading  = 'lazy';
+      media.appendChild(el);
+      btn.appendChild(media);
+
+      // Capture idx and source in closure so click always opens the right image
+      (function(i, source) {
+        btn.addEventListener('click', function() { lbOpen(i, source); });
+      })(idx, lbImgs);
+
+      list.appendChild(btn);
+    });
+
+    // ── Progressive reveal: IO fires relative to the scrollable panel ──
+    // root: panel means items below the panel fold are observed on scroll,
+    // revealing one by one as they enter view — like the series cards page.
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          obs.unobserve(entry.target);
+        }
+      });
+    }, {
+      root:       panel,
+      threshold:  0.05,
+      rootMargin: '0px 0px -20px 0px',
+    });
+
+    Array.from(list.querySelectorAll('.thumb-item')).forEach(function(el, i) {
+      // Stagger items visible on open (cap at 400ms); scrolled items appear promptly.
+      el.style.transitionDelay = Math.min(i * 45, 400) + 'ms';
+      obs.observe(el);
     });
   }
 
@@ -319,44 +391,7 @@ const covers = all
     pauseTimer();
     buildThumbs();
     thumbBtn.classList.add('is-active');
-
-    // Cancel any pending "remove .is-open" from a closeThumbs() call that
-    // hasn't finished yet (e.g. the panel was toggled shut-then-open again
-    // quickly) — otherwise that stale timeout fires later and strips
-    // .is-open out from under this new open state, breaking the panel.
-    if (panelCloseTimeout) {
-      clearTimeout(panelCloseTimeout);
-      panelCloseTimeout = null;
-    }
-
-    // Anchor the reveal to the current photo's actual on-screen position —
-    // the panel expands outward from the photo instead of cross-fading in,
-    // so the transition reads as "one image becoming a grid."
-    var panelRect = panel.getBoundingClientRect();
-    if (currentEl && currentEl.isConnected) {
-      panel.style.transition = 'none';
-      panel.style.clipPath   = clipInsetFromRect(currentEl.getBoundingClientRect(), panelRect);
-      panel.classList.add('is-open');
-      panel.offsetHeight; // force reflow so the collapsed clip-path paints first
-      requestAnimationFrame(function() {
-        panel.style.transition = 'clip-path ' + PANEL_DUR_MS + 'ms ' + EASE_REVEAL;
-        panel.style.clipPath   = 'inset(0)';
-      });
-    } else {
-      panel.style.transition = 'none';
-      panel.style.clipPath   = 'inset(0)';
-      panel.classList.add('is-open');
-    }
-
-    // Thumbnails assemble in, starting as the expansion finishes
-    var items = grid.querySelectorAll('.thumb-item');
-    items.forEach(function(item, i) {
-      setTimeout(function() {
-        item.style.transition = 'opacity ' + PANEL_DUR_MS + 'ms ' + EASE + ', transform ' + PANEL_DUR_MS + 'ms ' + EASE;
-        item.style.opacity    = '1';
-        item.style.transform  = 'translateY(0)';
-      }, PANEL_DUR_MS * 0.6 + i * 30);
-    });
+    panel.classList.add('is-open');
 
     // Slide + fade out arrows away from center
     var t = 'opacity ' + ARROW_DUR + ' ' + ARROW_EASE + ', transform ' + ARROW_DUR + ' ' + ARROW_EASE;
@@ -376,19 +411,7 @@ const covers = all
   function closeThumbs() {
     thumbOpen = false;
     thumbBtn.classList.remove('is-active');
-
-    // Contract back down to wherever the current photo will reappear —
-    // the mirror image of the expand-out on open.
-    var panelRect = panel.getBoundingClientRect();
-    panel.style.transition = 'clip-path ' + PANEL_DUR_MS + 'ms ' + EASE_REVEAL;
-    panel.style.clipPath   = (currentEl && currentEl.isConnected)
-      ? clipInsetFromRect(currentEl.getBoundingClientRect(), panelRect)
-      : 'inset(50% 50% 50% 50%)';
-    if (panelCloseTimeout) clearTimeout(panelCloseTimeout);
-    panelCloseTimeout = setTimeout(function() {
-      panel.classList.remove('is-open');
-      panelCloseTimeout = null;
-    }, PANEL_DUR_MS);
+    panel.classList.remove('is-open');
 
     // Slide + fade in arrows back to center
     var t = 'opacity 360ms ' + ARROW_IN_EASE + ', transform 400ms ' + ARROW_IN_EASE;
@@ -407,21 +430,26 @@ const covers = all
   }
 
   // ── Lightbox ──────────────────────────────────────────────────
-  var lb          = document.getElementById('s-lb');
-  var lbImg       = document.getElementById('s-lb-img');
-  var lbClose     = document.getElementById('s-lb-close');
-  var lbPrev      = document.getElementById('s-lb-prev');
-  var lbNext      = document.getElementById('s-lb-next');
-  var lbInfoLink  = document.getElementById('s-lb-info-link');
-  var lbIdx       = 0;
+  // lbSource switches between covers (slideshow) and allImages (thumbnails)
+  // so prev/next navigate the right collection after opening.
+  var lb         = document.getElementById('s-lb');
+  var lbImg      = document.getElementById('s-lb-img');
+  var lbClose    = document.getElementById('s-lb-close');
+  var lbPrev     = document.getElementById('s-lb-prev');
+  var lbNext     = document.getElementById('s-lb-next');
+  var lbInfoLink = document.getElementById('s-lb-info-link');
+  var lbIdx      = 0;
+  var lbSource   = covers; // default: slideshow covers
 
-  function lbOpen(idx) {
-    lbIdx = ((idx % covers.length) + covers.length) % covers.length;
-    lbImg.src = covers[lbIdx].src;
-    lbImg.alt = covers[lbIdx].title;
-    if (lbInfoLink && covers[lbIdx].slug && covers[lbIdx].title) {
-      lbInfoLink.href = '/series/' + covers[lbIdx].slug;
-      lbInfoLink.textContent = covers[lbIdx].title;
+  function lbOpen(idx, source) {
+    if (source) lbSource = source;
+    lbIdx = ((idx % lbSource.length) + lbSource.length) % lbSource.length;
+    var item = lbSource[lbIdx];
+    lbImg.src = item.src;
+    lbImg.alt = item.alt || item.title || '';
+    if (lbInfoLink && item.slug && item.title) {
+      lbInfoLink.href        = '/series/' + item.slug;
+      lbInfoLink.textContent = item.title;
     }
     lb.classList.add('is-open');
     lb.removeAttribute('aria-hidden');
@@ -433,9 +461,9 @@ const covers = all
   }
 
   lbClose.addEventListener('click', lbDismiss);
-  lbPrev.addEventListener('click', function() { lbOpen(lbIdx - 1); });
-  lbNext.addEventListener('click', function() { lbOpen(lbIdx + 1); });
-  lb.addEventListener('click', function(e) { if (e.target === lb) lbDismiss(); });
+  lbPrev.addEventListener('click',  function() { lbOpen(lbIdx - 1); });
+  lbNext.addEventListener('click',  function() { lbOpen(lbIdx + 1); });
+  lb.addEventListener('click',      function(e) { if (e.target === lb) lbDismiss(); });
 
   document.addEventListener('keydown', function(e) {
     if (lb.classList.contains('is-open')) {
@@ -848,9 +876,9 @@ const covers = all
   .ctrl.is-active .ctrl__label { color: var(--shutter-label-hover); }
 
   /* ── Thumbnail panel ─────────────────────────────────────────
-     Revealed via clip-path (set/animated from JS in openThumbs()/
-     closeThumbs()) anchored to the current photo's on-screen rect,
-     rather than a flat opacity cross-fade — see home.astro's script.
+     Plain opacity/visibility fade, toggled by a single .is-open
+     classList change — deliberately simple. See home.astro's script
+     for why a fancier clip-path version was tried and removed.
      ────────────────────────────────────────────────────────── */
   #thumb-panel {
     position: absolute;
@@ -860,32 +888,86 @@ const covers = all
     background: var(--color-bg);
     z-index: 20;
     overflow-y: auto;
-    clip-path: inset(50% 50% 50% 50%);
+    opacity: 0;
+    visibility: hidden;
     pointer-events: none;
+    transition: opacity var(--dur-panel) var(--ease), visibility var(--dur-panel);
+    /* Subtle scrollbar — thin, matches theme */
+    scrollbar-width: none;
   }
-  #thumb-panel.is-open { pointer-events: auto; }
+  #thumb-panel::-webkit-scrollbar { display: none; }
+  #thumb-panel.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
 
-  #thumb-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
+  /* ── Thumbnail list — vertical card sequence ────────────────
+     Mirrors the series/index.astro card layout: each image is a
+     self-contained card at a tier-specific width, alternating
+     left / right. Generous vertical gap keeps the feeling calm
+     and curated — an archive you explore, not a dense wall.
+       hero  (Series)       → 62% wide, 3:4 portrait — dominant
+       mid   (Observations) → 46% wide, 4:5 portrait — secondary
+       small (Play)         → 30% wide, 1:1 square  — textural
+     ────────────────────────────────────────────────────────── */
+  #thumb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 52px;
     padding: var(--gutter);
+    padding-top: calc(var(--gutter) * 1.5);
+    padding-bottom: calc(var(--gutter) * 2);
+    max-width: 900px;
+    margin: 0 auto;
   }
 
+  /* ── Base card ───────────────────────────────────────── */
   :global(.thumb-item) {
     display: block;
-    overflow: hidden;
-    background: none; border: none; padding: 0;
+    background: none;
+    border: none;
+    padding: 0;
     cursor: pointer;
+    /* Start hidden; IntersectionObserver adds .is-visible */
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+      opacity   var(--dur-reveal) var(--ease-reveal),
+      transform var(--dur-reveal) var(--ease-reveal);
   }
-  :global(.thumb-item img) {
+  :global(.thumb-item.is-visible) {
+    opacity:   1;
+    transform: translateY(0);
+  }
+
+  /* Alignment */
+  :global(.thumb-item--left)  { align-self: flex-start; }
+  :global(.thumb-item--right) { align-self: flex-end; }
+
+  /* Widths by tier */
+  :global(.thumb-item--hero)  { width: 26%; }
+  :global(.thumb-item--mid)   { width: 18%; }
+  :global(.thumb-item--small) { width: 12%; }
+
+  /* ── Media (image container) ─────────────────────────── */
+  :global(.thumb-media) {
+    overflow: hidden;
+    background: var(--color-surface);
+  }
+  :global(.thumb-media img) {
     display: block;
     width: 100%;
-    aspect-ratio: 1 / 1;
     object-fit: cover;
     transition: opacity var(--dur-fast) var(--ease);
   }
-  :global(.thumb-item:hover img) { opacity: 0.55; }
+  :global(.thumb-item:hover .thumb-media img) { opacity: 0.55; }
+
+  /* Aspect ratios */
+  :global(.thumb-item--hero  .thumb-media img) { aspect-ratio: 3 / 4; }
+  :global(.thumb-item--mid   .thumb-media img) { aspect-ratio: 4 / 5; }
+  :global(.thumb-item--small .thumb-media img) { aspect-ratio: 1 / 1; }
+
 
   /* ── Info panel typography ────────────────────────────────── */
   .home-info__role {
@@ -912,13 +994,19 @@ const covers = all
   .home-info__socials { margin-top: 0.25rem; display: flex; gap: 0.875rem; }
 
   @media (max-width: 1024px) {
-    #thumb-grid { grid-template-columns: repeat(4, 1fr); }
+    #thumb-list { gap: 36px; }
+    :global(.thumb-item--hero)  { width: 36%; }
+    :global(.thumb-item--mid)   { width: 26%; }
+    :global(.thumb-item--small) { width: 18%; }
   }
 
   @media (max-width: 768px) {
-    /* --gutter is 1.5rem at this breakpoint (set in global.css :root override),
-       so padding: 0 var(--gutter) var(--gutter) resolves to 0 1.5rem 1.5rem */
-    #thumb-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    #thumb-list { gap: 20px; }
+    :global(.thumb-item--hero),
+    :global(.thumb-item--mid),
+    :global(.thumb-item--small) { width: 55%; }
+    :global(.thumb-item--left),
+    :global(.thumb-item--right) { align-self: center; }
 
     /* Bottom bar: the 3-column grid's center column doesn't shrink, so on
        narrow screens the controls can overflow past the viewport edge.
